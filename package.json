@@ -1,0 +1,21 @@
+{
+ "name": "haggle",
+ "version": "2.1.0-beta",
+ "description": "Haggle: a daily market game with a server-run, cheat-resistant engine.",
+ "author": "Dolapo Oyatomi",
+ "license": "UNLICENSED",
+ "private": true,
+ "main": "server.js",
+ "scripts": {
+  "start": "node server.js",
+  "test:unit": "node --test test/engine.unit.test.js test/security.unit.test.js test/harness/wiring.test.js",
+  "make-owner-secret": "node scripts/make-owner-secret.js"
+ },
+ "engines": {
+  "node": ">=18"
+ },
+ "dependencies": {
+  "express": "^4.19.2",
+  "pg": "^8.12.0"
+ }
+}

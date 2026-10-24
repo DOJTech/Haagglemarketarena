@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Haggle Market Arena: Where Price Meets Strategy</title>
+<meta name="description" content="A market negotiation simulation. Buy smarter, negotiate better, protect your margins. No real money.">
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#0B1220">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon-192.png"><link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="wrap top"><div class="brand">HAGGLE <b>MARKET ARENA</b></div><p id="live" class="live" role="status" aria-live="polite"></p></header>
+<nav class="wrap tabs" aria-label="Sections">
+<button data-t="play" aria-current="page">Arena</button><button data-t="lead">Leaders</button><button data-t="spon">Market insights</button><button data-t="how">How it works</button><button data-t="inv" id="invb" hidden>Metrics</button>
+</nav>
+<main id="main" class="wrap" tabindex="-1">
+<noscript><p class="err">Haggle Market Arena needs JavaScript. Please turn it on in your browser.</p></noscript>
+<div id="sr" class="sr-only" role="status" aria-live="polite"></div>
+<section id="play" aria-label="Arena"><div id="arena" class="arena"><div id="stage"></div><aside id="dash" class="dash" aria-label="Your business" hidden></aside></div></section>
+<section id="lead" aria-label="Leaders" hidden></section><section id="spon" aria-label="Market insights" hidden></section><section id="how" aria-label="How it works" hidden></section><section id="inv" aria-label="Owner metrics" hidden></section>
+</main>
+<footer class="wrap foot">
+<p>Haggle Market Arena is a simulation. No real money changes hands, and results do not predict real markets.</p>
+<details class="card"><summary>About, privacy and your data</summary>
+<p><b>What is stored on our server:</b> a random device ID, your display name, your country (optional), your games and scores, and a short signal that you are playing right now. We do not ask for your real name, phone number or email. If you create an account, we also store your private username, a scrambled (hashed) copy of your password, and your sign-in sessions. We cannot see your password.</p>
+<p><b>What is public:</b> your display name, country and score appear on the leaderboard. Do not use your real name.</p>
+<p><b>On this device:</b> your settings and best score are saved in your browser. Clearing browser data may erase them.</p>
+<p><b>Reset this device</b> clears saved data on this device only. <b>Delete my data</b> also deletes your records from our server. Copies kept in backups by our hosting providers may take longer to disappear.</p>
+<button class="btn alt" id="rst" type="button">Reset this device</button><button class="btn alt" id="del" type="button">Delete my data</button></details>
+<p><a href="privacy.html">Privacy</a> and <a href="terms.html">Terms</a></p>
+<p>Built by Dolapo Oyatomi</p>
+</footer>
+<script src="common.js"></script><script src="app.js"></script>
+</body>
+</html>
