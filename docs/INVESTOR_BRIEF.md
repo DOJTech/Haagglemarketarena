@@ -1,7 +1,7 @@
 # Haggle: investor brief (prototype stage)
 Built by Dolapo Oyatomi.
 
-**What it is.** A daily market game. Players buy stock, then haggle with six shoppers a day for seven days. Everyone plays the same daily market, so scores are comparable. Country leagues, weekly league, streaks, installable on phones.
+**What it is.** A daily market game. Players buy stock, then haggle with 7 to 10 shoppers a day for seven days, under changing weather and a limited selling time. Everyone plays the same daily market, so scores are comparable. Country leagues, weekly league, streaks, installable on phones.
 
 **Positioning (accurate).** An early sponsored price-test platform built on a game. It is not an ad exchange.
 

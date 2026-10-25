@@ -20,8 +20,8 @@ function makeExpress() {
         get: h => headers[String(h).toLowerCase()] };
       let status = 200, payload, ended = false; const out = {};
       const r = {
-        headersSent: false,
-        status(c) { status = c; return r; },
+        headersSent: false, statusCode: 200, on() {},
+        status(c) { status = c; r.statusCode = c; return r; },
         set(k, v) { if (typeof k === 'object') Object.assign(out, k); else out[k] = v; return r; },
         json(b) { payload = b; ended = true; r.headersSent = true; return r; },
         send(b) { payload = b; ended = true; r.headersSent = true; return r; },
@@ -49,7 +49,7 @@ function makeExpress() {
 
 // ---- in-memory fake of just the tables and statements server.js uses ----
 function makeFakeDb(clock) {
-  const db = { players: new Map(), accounts: [], sessions: [], rate: new Map(), adminSessions: [], totp: new Set(), audit: [], rankedRuns: [], runs: [], now: () => clock.t, queries: [] };
+  const db = { codes: [], players: new Map(), accounts: [], sessions: [], rate: new Map(), adminSessions: [], totp: new Set(), audit: [], rankedRuns: [], runs: [], now: () => clock.t, queries: [] };
   const ok = (rows = [], rowCount = rows.length) => ({ rows, rowCount });
   db.query = async (sqlRaw, p = []) => {
     const sql = String(sqlRaw).replace(/\s+/g, ' ').trim(); db.queries.push(sql);
@@ -63,13 +63,37 @@ function makeFakeDb(clock) {
     if (/^insert into accounts/.test(sql)) {
       if (db.accounts.some(a => a.username_lc === p[2])) throw Object.assign(new Error('dup'), { code: '23505', constraint: 'accounts_username_uniq' });
       if (db.accounts.some(a => a.player === p[4])) throw Object.assign(new Error('dup'), { code: '23505', constraint: 'accounts_player_uniq' });
-      db.accounts.push({ id: p[0], username: p[1], username_lc: p[2], pass: p[3], player: p[4] }); return ok([], 1);
+      db.accounts.push({ id: p[0], username: p[1], username_lc: p[2], pass: p[3], player: p[4], email: p[5], email_norm: p[6], email_verified: false }); return ok([], 1);
     }
-    if (/^select id,pass,player,username from accounts where username_lc/.test(sql)) { const a = db.accounts.find(x => x.username_lc === p[0]); return a ? ok([a]) : ok(); }
-    if (/^select a\.id,a\.username,exists/.test(sql)) {
+    if (/^select id,pass,player,username,email_verified from accounts where username_lc/.test(sql)) { const a = db.accounts.find(x => x.username_lc === p[0]); return a ? ok([a]) : ok(); }
+    if (/^select a\.id,a\.username,a\.email,a\.email_verified,a\.pass,a\.player from sessions s join accounts a/.test(sql)) {
+      const s1 = db.sessions.find(x => x.h === p[0] && x.expires > db.now()); return s1 ? ok([db.accounts.find(a => a.id === s1.account)].filter(Boolean)) : ok();
+    }
+    if (/^insert into email_codes/.test(sql)) {
+      const row = db.codes.find(c => c.account === p[0] && c.purpose === p[1]);
+      if (row && !(row.sent < db.now() - 60000)) return ok([], 0);
+      const n = { account: p[0], purpose: p[1], h: p[2], expires: db.now() + 15 * 60000, tries: 0, sent: db.now() };
+      if (row) Object.assign(row, n); else db.codes.push(n); return ok([], 1);
+    }
+    if (/^update email_codes set tries=tries\+1/.test(sql)) {
+      const row = db.codes.find(c => c.account === p[0] && c.purpose === p[1] && c.expires > db.now() && c.tries < 5);
+      if (!row) return ok(); row.tries++; return ok([{ h: row.h }]);
+    }
+    if (/^delete from email_codes where account=\$1 and purpose=\$2/.test(sql)) { db.codes = db.codes.filter(c => !(c.account === p[0] && c.purpose === p[1])); return ok(); }
+    if (/^delete from email_codes where account in/.test(sql)) { const ids = db.accounts.filter(a => a.player === p[0]).map(a => a.id); db.codes = db.codes.filter(c => !ids.includes(c.account)); return ok(); }
+    if (/^update accounts set email_verified=true where id=/.test(sql)) {
+      const a = db.accounts.find(x => x.id === p[0]);
+      if (db.accounts.some(x => x !== a && x.email_verified && x.email_norm === a.email_norm)) throw Object.assign(new Error('dup'), { code: '23505', constraint: 'accounts_email_uniq' });
+      a.email_verified = true; return ok([], 1);
+    }
+    if (/^update accounts set email=\$2,email_norm=\$3,email_verified=false/.test(sql)) { const a = db.accounts.find(x => x.id === p[0]); Object.assign(a, { email: p[1], email_norm: p[2], email_verified: false }); return ok([], 1); }
+    if (/^select id,(email|username) from accounts where email_norm=\$1 and email_verified/.test(sql)) { const a = db.accounts.find(x => x.email_norm === p[0] && x.email_verified); return a ? ok([a]) : ok(); }
+    if (/^update accounts set pass=\$2 where id=/.test(sql)) { db.accounts.find(x => x.id === p[0]).pass = p[1]; return ok([], 1); }
+    if (/^delete from sessions where account=\$1$/.test(sql)) { db.sessions = db.sessions.filter(x => x.account !== p[0]); return ok(); }
+    if (/^select a\.id,a\.username,a\.email,a\.email_verified,exists/.test(sql)) {
       const a = db.accounts.find(x => x.player === p[0]); if (!a) return ok();
       const good = db.sessions.some(s => s.h === p[1] && s.account === a.id && s.expires > db.now());
-      return ok([{ id: a.id, username: a.username, ok: good }]);
+      return ok([{ id: a.id, username: a.username, email: a.email, email_verified: a.email_verified, ok: good }]);
     }
     if (/^insert into sessions/.test(sql)) { db.sessions.push({ h: p[0], account: p[1], expires: db.now() + p[2] * 864e5, created: db.sessions.length }); return ok([], 1); }
     if (/^delete from sessions where account=\$1 and h not in/.test(sql)) {

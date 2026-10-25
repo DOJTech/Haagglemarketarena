@@ -1,168 +1,131 @@
-// Naija Radio: original in-game music (made live in the browser), your own songs from your phone, and links from the internet.
-// Nothing here uploads your files. Embedded players (Spotify, YouTube, Apple Music, Audiomack) run in their own sandboxed frames.
-(function () {
-  const ST = window.HaggleStations, ML = window.MusicLinks, AC = window.AudioContext || window.webkitAudioContext;
-  const WX_ST = { sun: 'market', hot: 'lagos', cloud: 'highlife', rain: 'rain', harm: 'highlife' };   // what Auto plays on each kind of day
-  const R = { ac: null, master: null, nbuf: null, playing: false, timer: null, step: 0, base: 0, pend: null, wx: 'sun',
-    station: get('haggle.st') || 'auto', vol: get('haggle.vol') === null ? 60 : +get('haggle.vol'), sfxOn: get('haggle.sfx') === '1', ambOn: get('haggle.amb') === '1',
-    amb: null, src: 'radio', tracks: [], ti: -1, aud: null, frame: null, shelf: null, msg: '', open: false, err: '' };
-
-  /* ---------- sound ---------- */
-  function ctx() {
-    if (!AC) return null;
-    if (!R.ac) {
-      R.ac = new AC(); const comp = R.ac.createDynamicsCompressor(); R.master = R.ac.createGain(); R.master.connect(comp); comp.connect(R.ac.destination);
-      const n = R.ac.sampleRate * 2, b = R.ac.createBuffer(1, n, R.ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; R.nbuf = b;
-    }
-    R.master.gain.value = Math.pow(R.vol / 100, 2) * 0.7;
-    if (R.ac.state === 'suspended' && R.ac.resume) R.ac.resume();
-    return R.ac;
-  }
-  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
-  function tone(type, f, t, dur, peak, dest, f2) {
-    const a = R.ac, o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur * 0.5);
-    env(g, t, 0.005, peak, dur); o.connect(g); g.connect(dest || R.master); o.start(t); o.stop(t + dur + 0.05);
-  }
-  function hiss(t, dur, peak, type, freq, q, dest) {
-    const a = R.ac, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = R.nbuf; f.type = type; f.frequency.value = freq; if (q) f.Q.value = q;
-    env(g, t, 0.002, peak, dur); s.connect(f); f.connect(g); g.connect(dest || R.master); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
-  }
-  const V = {
-    k: (t, v) => tone('sine', 150, t, 0.3, 0.9 * v, null, 42),
-    s: (t, v) => { hiss(t, 0.16, 0.5 * v, 'bandpass', 1900, 0.8); tone('triangle', 200, t, 0.1, 0.25 * v); },
-    h: (t, v) => hiss(t, 0.045, 0.22 * v, 'highpass', 7000),
-    x: (t, v) => hiss(t, 0.07, 0.16 * v, 'bandpass', 5200, 1.2),
-    c: (t, v) => { tone('square', 540, t, 0.16, 0.07 * v); tone('square', 810, t, 0.16, 0.06 * v); },
-    g: (t, v) => tone('sine', 330, t, 0.14, 0.4 * v, null, 230),
+/* Music for Haggle Market Arena.
+   1. Built-in beats: original, generated in the browser (no recordings, so no copyright issues). The mood follows the weather.
+   2. My music: audio files chosen from the phone. They are played from the device and never uploaded.
+   3. From the internet: a direct audio or radio link, or a Spotify or YouTube link shown in that service's own player.
+   We do not store or supply commercial songs. Nothing plays until the player presses Play. */
+(function (root) {
+  'use strict';
+  /* ---------- pure parts (tested in test/music.unit.test.js) ---------- */
+  const MOODS = {
+    sun: { bpm: 104, root: 57, scale: [0, 2, 4, 7, 9], pluck: .55, rain: 0 },
+    hot: { bpm: 110, root: 55, scale: [0, 2, 4, 7, 9], pluck: .6, rain: 0 },
+    cloud: { bpm: 98, root: 57, scale: [0, 2, 3, 7, 9], pluck: .4, rain: 0 },
+    rain: { bpm: 88, root: 54, scale: [0, 3, 5, 7, 10], pluck: .35, rain: .5 },
+    storm: { bpm: 84, root: 52, scale: [0, 3, 5, 7, 10], pluck: .25, rain: .9 },
+    harm: { bpm: 94, root: 50, scale: [0, 2, 5, 7, 9], pluck: .35, rain: 0 },
   };
-  function chord(st, bar, t, dur) {
-    const a = R.ac, lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = st.voice === 'soft' ? 900 : 1600; lp.connect(R.master);
-    const type = st.voice === 'soft' ? 'sine' : 'triangle', peak = st.voice === 'soft' ? 0.06 : 0.05;
-    st.chords[bar % st.chords.length].forEach((n) => tone(type, mtof(st.root + st.up + n), t, dur, peak, lp));
+  const mulberry = a => () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+  // One bar of 16 steps: a laid-back, danceable pattern. Deterministic for a given mood and bar number.
+  function bar(mood, n) {
+    const M = MOODS[mood] || MOODS.cloud, R = mulberry(n * 2654435761 + mood.length * 97), ev = [];
+    [0, 6, 10].forEach(s => ev.push({ step: s, kind: 'kick' }));
+    [4, 12].forEach(s => ev.push({ step: s, kind: 'clap' }));
+    for (let s = 0; s < 16; s += 2) ev.push({ step: s, kind: 'hat', accent: s % 4 === 0 });
+    for (let s = 1; s < 16; s += 2) if (R() < .6) ev.push({ step: s, kind: 'shk' });
+    [0, 3, 6, 10, 12].forEach((s, i) => ev.push({ step: s, kind: 'bass', note: M.root - 12 + M.scale[(i * 2 + (n % 2)) % M.scale.length] }));
+    for (let s = 0; s < 16; s++) if (s % 2 === 1 && R() < M.pluck * .6) ev.push({ step: s, kind: 'pluck', note: M.root + 12 + M.scale[Math.floor(R() * M.scale.length)] });
+    return ev;
   }
-  function playStep(st, step, t) {
-    const i = step % 16, bar = Math.floor(step / 16), sd = 60 / st.bpm / 4;
-    for (const key of ['k', 's', 'h', 'x', 'c', 'g']) if (st[key][i]) V[key](t, st[key][i]);
-    if (st.bass[i] != null) tone('triangle', mtof(st.root + st.bass[i]), t, sd * 3, 0.55);
-    if (st.chordSteps.includes(i)) chord(st, bar, t, st.voice === 'soft' ? sd * 7 : sd * 2.5);
-    if (st.arp && st.arp[i] != null) { const ch = st.chords[bar % st.chords.length]; tone('triangle', mtof(st.root + st.up + 12 + ch[st.arp[i] % ch.length]), t, sd * 2, 0.12); }
+  // Only these hosts are shown in an embedded player. Everything else must be a plain https audio link.
+  function parseLink(raw) {
+    let u; try { u = new URL(String(raw).trim()); } catch (e) { return { error: 'That does not look like a web address.' }; }
+    if (u.protocol !== 'https:') return { error: 'Only secure (https) links are allowed.' };
+    if (u.username || u.password) return { error: 'That link contains a login, so it was refused.' };
+    const h = u.hostname.toLowerCase(), p = u.pathname.replace(/\/+$/, '');
+    if (h === 'open.spotify.com') {
+      const m = p.match(/^(?:\/intl-[a-z-]+)?\/(track|album|playlist|episode|show)\/([A-Za-z0-9]{10,40})$/);
+      return m ? { kind: 'embed', service: 'Spotify', src: 'https://open.spotify.com/embed/' + m[1] + '/' + m[2] } : { error: 'Please paste a Spotify track, album or playlist link.' };
+    }
+    if (h === 'www.youtube.com' || h === 'youtube.com' || h === 'm.youtube.com' || h === 'youtu.be') {
+      const id = h === 'youtu.be' ? p.slice(1) : (u.searchParams.get('v') || '');
+      const list = u.searchParams.get('list') || '';
+      if (/^[A-Za-z0-9_-]{11}$/.test(id)) return { kind: 'embed', service: 'YouTube', src: 'https://www.youtube-nocookie.com/embed/' + id };
+      if (/^[A-Za-z0-9_-]{10,60}$/.test(list)) return { kind: 'embed', service: 'YouTube', src: 'https://www.youtube-nocookie.com/embed/videoseries?list=' + list };
+      return { error: 'Please paste a YouTube video or playlist link.' };
+    }
+    if (/(^|\.)(spotify|youtube|youtu|audiomack|boomplay|apple|music\.apple|deezer|soundcloud|tidal)\.[a-z.]+$/.test(h)) return { error: 'That service cannot be played inside the game. Open its own app and let it play in the background, or paste a Spotify or YouTube link.' };
+    return { kind: 'audio', src: u.href };
   }
-  const stId = () => (R.station === 'auto' ? WX_ST[R.wx] || 'market' : R.station);
-  function pump() {
-    if (!R.playing) return;
-    let st = ST[stId()];
-    while (R.base + (R.step * 60 / st.bpm / 4) + (R.step % 2 ? st.swing * 60 / st.bpm / 4 : 0) < R.ac.currentTime + 0.15) {
-      if (R.step % 16 === 0 && R.pend !== null) { R.pend = null; st = ST[stId()]; }
-      const sd = 60 / st.bpm / 4; playStep(st, R.step, R.base + R.step * sd + (R.step % 2 ? st.swing * sd : 0)); R.step++;
+  const api = { MOODS, bar, parseLink, midiHz, mulberry };
+  if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
+
+  /* ---------- browser parts ---------- */
+  const $ = s => document.querySelector(s), get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, put = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+  let ctx, master, noiseBuf, rainG, timer, nextT = 0, stepN = 0, barN = 0, mood = 'cloud', on = false, audio = null, files = [], fi = 0, embed = null, src = get('haggle.msrc') || 'synth';
+  const vol = () => (+(get('haggle.mvol') || 50)) / 100;
+  const say = t => { const e = $('#mmsg'); if (e) e.textContent = t || ''; };
+  function setup() {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { say('This browser cannot play the built-in beats.'); return false; }
+    if (ctx) return true;
+    ctx = new AC(); master = ctx.createGain(); master.gain.value = vol() * .6; master.connect(ctx.destination);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return true;
+  }
+  function tone(t, f, dur, type, v) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }
+  function kick(t) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + .12); g.gain.setValueAtTime(.9, t); g.gain.exponentialRampToValueAtTime(.001, t + .2); o.connect(g); g.connect(master); o.start(t); o.stop(t + .22); }
+  function hiss(t, dur, hp, v) { const s = ctx.createBufferSource(); s.buffer = noiseBuf; const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; const g = ctx.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .02); }
+  function play(e, t) {
+    if (e.kind === 'kick') kick(t); else if (e.kind === 'clap') hiss(t, .12, 1500, .35); else if (e.kind === 'hat') hiss(t, .04, 7000, e.accent ? .22 : .12);
+    else if (e.kind === 'shk') hiss(t, .03, 5000, .08); else if (e.kind === 'bass') tone(t, midiHz(e.note), .22, 'triangle', .5); else if (e.kind === 'pluck') tone(t, midiHz(e.note), .35, 'sine', .22);
+  }
+  function tick() {
+    const M = MOODS[mood], sd = 60 / M.bpm / 4; let cur = bar(mood, barN);
+    while (nextT < ctx.currentTime + .25) {
+      const t = nextT + (stepN % 2 ? sd * .12 : 0); cur.filter(e => e.step === stepN).forEach(e => play(e, t));
+      nextT += sd; if (++stepN === 16) { stepN = 0; barN++; cur = bar(mood, barN); }
     }
   }
-  function startSynth() { if (!ctx()) return false; stopSynth(); R.playing = true; R.step = 0; R.base = R.ac.currentTime + 0.08; R.timer = setInterval(pump, 25); pump(); return true; }
-  function stopSynth() { R.playing = false; if (R.timer) clearInterval(R.timer); R.timer = null; }
-  function setAmb() {
-    if (R.amb) { try { R.amb.stop(); } catch (e) {} R.amb = null; }
-    if (!R.ambOn || !ctx() || (R.wx !== 'rain' && R.wx !== 'harm')) return;
-    const a = R.ac, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); s.buffer = R.nbuf; s.loop = true;
-    f.type = R.wx === 'rain' ? 'bandpass' : 'lowpass'; f.frequency.value = R.wx === 'rain' ? 1100 : 380; g.gain.value = R.wx === 'rain' ? 0.1 : 0.05; s.connect(f); f.connect(g); g.connect(R.master); s.start(); R.amb = s;
+  function rainLayer() {
+    if (rainG) { try { rainG.src.stop(); } catch (e) {} rainG = null; }
+    const M = MOODS[mood]; if (!M.rain || !ctx) return;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = .4;
+    const g = ctx.createGain(); g.gain.value = M.rain * .14; s.connect(f); f.connect(g); g.connect(master); s.start(); rainG = { src: s };
   }
-  function sfx(kind) {
-    if (!R.sfxOn || !R.ac || R.ac.state !== 'running') return; const t = R.ac.currentTime + 0.01;
-    if (kind === 'sale') { tone('sine', 880, t, 0.18, 0.3); tone('sine', 1320, t + 0.09, 0.3, 0.3); }
-    else if (kind === 'walk') tone('sawtooth', 240, t, 0.28, 0.12, null, 150);
-    else if (kind === 'day') { tone('triangle', 523, t, 0.25, 0.25); tone('triangle', 659, t + 0.12, 0.25, 0.25); tone('triangle', 784, t + 0.24, 0.4, 0.25); }
+  function startSynth() { if (!setup()) return; ctx.resume(); nextT = ctx.currentTime + .1; stepN = 0; rainLayer(); clearInterval(timer); timer = setInterval(tick, 60); }
+  function stopAll() { clearInterval(timer); if (rainG) { try { rainG.src.stop(); } catch (e) {} rainG = null; } if (ctx && ctx.state === 'running') ctx.suspend(); if (audio) audio.pause(); const f = $('#membed'); if (f) f.innerHTML = ''; embed = null; }
+  function loadTrack() {
+    if (!files.length) return say('Choose some audio files from your phone first.');
+    if (audio) { audio.pause(); URL.revokeObjectURL(audio.src); }
+    audio = new Audio(URL.createObjectURL(files[fi])); audio.volume = vol(); audio.onended = () => { fi = (fi + 1) % files.length; loadTrack(); };
+    audio.play().catch(() => say('Could not play that file. Try another one.')); say('Now playing: ' + files[fi].name);
   }
-
-  /* ---------- phone files, internet links ---------- */
-  function audio() { if (!R.aud) { R.aud = new Audio(); R.aud.preload = 'none'; R.aud.onended = () => { if (R.src === 'phone') playTrack(R.ti + 1); }; R.aud.onerror = () => say(T('That track could not be played.')); } return R.aud; }
-  function say(m) { R.msg = m; const e = document.getElementById('mnow'); if (e) e.textContent = m; }
-  function stopOthers(keep) {
-    if (keep !== 'radio') stopSynth();
-    if (keep !== 'phone' && keep !== 'net' && R.aud) R.aud.pause();
-    if (keep !== 'net-frame' && R.frame) { R.frame.remove(); R.frame = null; }
-    if (keep === 'net-frame' && R.aud) R.aud.pause();
-    if (keep === 'net' || keep === 'net-frame') stopSynth();
-    if (keep === 'phone' && R.frame) { R.frame.remove(); R.frame = null; }
+  function go() {
+    stopAll(); on = true; $('#mplay').textContent = 'Pause'; $('#mplay').setAttribute('aria-pressed', 'true');
+    if (src === 'synth') { startSynth(); say('Playing built-in beats. They match the weather: ' + mood + '.'); }
+    else if (src === 'phone') loadTrack();
+    else if (src === 'web') webGo();
   }
-  function playTrack(i) {
-    if (!R.tracks.length) return; if (i < 0) i = R.tracks.length - 1; if (i >= R.tracks.length) i = 0;
-    stopOthers('phone'); R.ti = i; const a = audio(); a.src = R.tracks[i].url; a.volume = R.vol / 100;
-    const p = a.play(); if (p && p.catch) p.catch(() => say(T('Tap play to start the music.')));
-    say(T('Now playing: {t}', { t: R.tracks[i].name })); draw();
-  }
-  function addFiles(files) {
-    for (const f of Array.from(files || []).slice(0, 50)) {
-      if (R.tracks.length >= 50) break;
-      if (f.type.indexOf('audio') === 0 || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|weba)$/i.test(f.name)) R.tracks.push({ name: f.name.replace(/\.[^.]+$/, '').slice(0, 80), url: URL.createObjectURL(f) });
+  function halt() { stopAll(); on = false; $('#mplay').textContent = 'Play'; $('#mplay').setAttribute('aria-pressed', 'false'); say('Music paused.'); }
+  function webGo() {
+    const r = parseLink(($('#murl') || {}).value || ''); if (r.error) { say(r.error); return halt(); }
+    if (r.kind === 'embed') {
+      if (!confirm('This will show ' + r.service + "'s own player. It is run by " + r.service + ', which may use cookies and see that you are using it. Continue?')) return halt();
+      const f = document.createElement('iframe'); f.src = r.src; f.title = r.service + ' player'; f.width = '100%'; f.height = '152'; f.setAttribute('allow', 'autoplay; encrypted-media'); f.referrerPolicy = 'no-referrer'; f.style.border = '0';
+      $('#membed').innerHTML = ''; $('#membed').appendChild(f); embed = f; say('Use the ' + r.service + ' player below to start the music.');
+    } else {
+      audio = new Audio(); audio.src = r.src; audio.volume = vol();
+      audio.onerror = () => { say('That link did not play as audio. It must be a direct link to a song file or a radio stream.'); halt(); };
+      audio.play().then(() => say('Playing your link.')).catch(() => say('Your browser blocked it or the link is not playable audio.'));
     }
-    if (R.ti < 0 && R.tracks.length) playTrack(0); else draw();
   }
-  function clearTracks() { if (R.aud) { R.aud.pause(); R.aud.removeAttribute('src'); } R.tracks.forEach((t) => URL.revokeObjectURL(t.url)); R.tracks = []; R.ti = -1; say(''); draw(); }
-  function playLink(url, title) {
-    R.err = ''; const p = ML.parse(url);
-    if (!p) { R.err = T('That link is not supported. Paste a Spotify, YouTube, Apple Music or Audiomack link, or a direct https link to an audio file.'); draw(); return; }
-    if (p.kind === 'audio') { stopOthers('net'); const a = audio(); a.src = p.src; a.volume = R.vol / 100; const pr = a.play(); if (pr && pr.catch) pr.catch(() => say(T('Tap play to start the music.'))); say(T('Now playing: {t}', { t: title || p.src })); R.src = 'net'; draw(); return; }
-    stopOthers('net-frame'); R.src = 'net';
-    const f = document.createElement('iframe');
-    f.src = p.embed; f.height = String(p.height); f.setAttribute('width', '100%'); f.title = T('Music player'); f.loading = 'lazy'; f.referrerPolicy = 'strict-origin-when-cross-origin';
-    f.setAttribute('allow', 'autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture'); f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation');
-    f.style.border = '0'; f.style.borderRadius = '12px'; R.frame = f; say(T('Now playing: {t}', { t: title || p.kind })); draw();
+  function setVol(v) { put('haggle.mvol', v); if (master) master.gain.value = v / 100 * .6; if (audio) audio.volume = v / 100; }
+  function setSrc(v) { src = v; put('haggle.msrc', v); document.querySelectorAll('[data-msrc]').forEach(e => e.hidden = e.dataset.msrc !== v); if (on) go(); }
+  function init() {
+    const btn = $('#musicb'), pan = $('#musicp'); if (!btn || !pan) return;
+    const close = () => { pan.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.focus(); };
+    btn.onclick = () => { const open = pan.hidden; pan.hidden = !open; btn.setAttribute('aria-expanded', String(open)); if (open) { const f = pan.querySelector('input,select,button'); if (f) f.focus(); } };
+    pan.addEventListener('keydown', e => { if (e.key === 'Escape') close(); }); $('#mclose').onclick = close;
+    $('#mplay').onclick = () => on ? halt() : go();
+    $('#mnext').onclick = () => { if (src === 'phone' && files.length) { fi = (fi + 1) % files.length; if (on) loadTrack(); } };
+    $('#mvol').value = String(+(get('haggle.mvol') || 50)); $('#mvol').oninput = e => setVol(+e.target.value);
+    document.querySelectorAll('input[name=msrc]').forEach(r => { r.checked = r.value === src; r.onchange = () => setSrc(r.value); });
+    $('#mfile').onchange = e => { files = Array.from(e.target.files).filter(f => /^audio\//.test(f.type) || /\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(f.name)); fi = 0; say(files.length ? files.length + ' file(s) ready. Press Play.' : 'No audio files found in that choice.'); };
+    $('#murl').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+    const cu = $('#mcur'); if (cu) { cu.innerHTML = Object.entries(CUR).map(([k, v]) => '<option value="' + k + '"' + (CURRENCY === k ? ' selected' : '') + '>' + v.n + ' (' + v.s.trim() + ')</option>').join(''); cu.onchange = () => { setCurrency(cu.value); if (typeof render === 'function') render(); }; }
+    setSrc(src);
+    // The game tells the music about the weather so the mood follows it.
+    window.addEventListener('haggle:wx', e => { const m = e.detail; if (MOODS[m] && m !== mood) { mood = m; if (on && src === 'synth') { rainLayer(); say('Music mood changed with the weather: ' + m + '.'); } } });
   }
-  async function loadShelf() { if (R.shelf) return; try { R.shelf = (await api('music')).rows; } catch (e) { R.shelf = []; } draw(); }
-
-  /* ---------- panel ---------- */
-  const NAMES = () => ({ auto: T('Auto (follows the weather)'), lagos: T(ST.lagos.name), market: T(ST.market.name), highlife: T(ST.highlife.name), rain: T(ST.rain.name) });
-  const chip = (id, label, on, extra) => `<button class="chip" type="button" data-${extra}="${id}" aria-pressed="${on}">${esc(label)}</button>`;
-  function draw() {
-    const el = document.getElementById('music'); if (!el) return;
-    const btn = document.getElementById('musicbtn'); if (btn) { btn.setAttribute('aria-expanded', String(R.open)); btn.classList.toggle('on', R.playing || (R.aud && !R.aud.paused) || !!R.frame); }
-    el.hidden = !R.open; if (!R.open) return;
-    const nm = NAMES(), playingNow = R.src === 'radio' ? R.playing : (R.aud && !R.aud.paused);
-    const radio = AC ? `<div class="ctl" role="group" aria-label="${esc(T('Station'))}">${Object.keys(nm).map((k) => chip(k, nm[k], R.station === k, 'st')).join('')}</div>
-<button class="btn" id="mplay" type="button">${R.playing ? T('Pause music') : T('Play music')}</button>
-<label for="mvol">${T('Volume')}</label><input id="mvol" type="range" min="0" max="100" value="${R.vol}">
-<label class="chk"><input type="checkbox" id="msfx"${R.sfxOn ? ' checked' : ''}> ${T('Sound effects (cha-ching on a sale)')}</label>
-<label class="chk"><input type="checkbox" id="mamb"${R.ambOn ? ' checked' : ''}> ${T('Weather sounds (rain, harmattan wind)')}</label>
-<p class="hint">${T('Original music made live on your phone by the game. No download and no data.')}</p>` : `<p class="err">${T('This browser cannot play the game radio.')}</p>`;
-    const phone = `<label for="mfile">${T('Choose songs from your phone')}</label><input id="mfile" type="file" accept="audio/*" multiple>
-<p class="hint">${T('Songs play on your phone only. Nothing is uploaded.')}</p>
-${R.tracks.length ? `<ol class="tracks">${R.tracks.map((t, i) => `<li><button class="rep" type="button" data-tr="${i}" aria-pressed="${i === R.ti}">${i === R.ti ? '\u25b6 ' : ''}${esc(t.name)}</button></li>`).join('')}</ol>
-<div class="ctl"><button class="chip" type="button" id="mprev">${T('Previous')}</button><button class="chip" type="button" id="mpp">${playingNow && R.src === 'phone' ? T('Pause') : T('Play')}</button><button class="chip" type="button" id="mnext">${T('Next')}</button><button class="chip" type="button" id="mclr">${T('Clear list')}</button></div>` : ''}`;
-    const net = `<h3>${T('Naija hits')}</h3>${R.shelf === null ? `<p class="hint">${T('Loading...')}</p>` : R.shelf.length ? `<ul class="shelf">${R.shelf.map((x, i) => `<li><button class="btn alt" type="button" data-sh="${i}">\u25b6 ${esc(x.title)}</button></li>`).join('')}</ul>` : `<p class="hint">${T('No picks yet. Paste a link below.')}</p>`}
-<label for="murl">${T('Paste a music link')}</label><input id="murl" type="url" inputmode="url" autocomplete="off" placeholder="https://" maxlength="400"><button class="btn" id="mgo" type="button">${T('Play link')}</button>
-${R.err ? `<p class="err" role="alert">${esc(R.err)}</p>` : ''}<div id="mframe"></div>
-<p class="hint">${T('Works with Spotify, YouTube, Apple Music, Audiomack or a direct https audio link. Streaming songs play inside the service\u2019s own player under its own licence and rules (you may need to sign in for full songs). Direct links use your mobile data.')}</p>`;
-    el.innerHTML = `<div class="mhead"><h2>${T('Naija Radio')}</h2><button class="rep" type="button" id="mclose">${T('Close')}</button></div>
-<div class="ctl" role="group" aria-label="${esc(T('Music source'))}">${chip('radio', T('Game radio'), R.tab === 'radio', 'tab')}${chip('phone', T('My phone'), R.tab === 'phone', 'tab')}${chip('net', T('From the internet'), R.tab === 'net', 'tab')}</div>
-<div>${R.tab === 'radio' ? radio : R.tab === 'phone' ? phone : net}</div><p id="mnow" class="hint" role="status" aria-live="polite">${esc(R.msg)}</p>`;
-    if (R.tab === 'net' && R.frame) document.getElementById('mframe').appendChild(R.frame);
-    wire(el);
-  }
-  function wire(el) {
-    const $$ = (s) => el.querySelectorAll(s), by = (id) => el.querySelector('#' + id);
-    by('mclose').onclick = () => { R.open = false; draw(); const b = document.getElementById('musicbtn'); if (b) b.focus(); };
-    $$('[data-tab]').forEach((b) => b.onclick = () => { R.tab = b.dataset.tab; if (R.tab === 'net') loadShelf(); draw(); });
-    $$('[data-st]').forEach((b) => b.onclick = () => { R.station = b.dataset.st; put('haggle.st', R.station); R.pend = true; if (!R.playing) { stopOthers('radio'); R.src = 'radio'; startSynth(); say(T('Now playing: {t}', { t: NAMES()[R.station] })); } draw(); });
-    const pl = by('mplay'); if (pl) pl.onclick = () => { if (R.playing) { stopSynth(); say(''); } else { stopOthers('radio'); R.src = 'radio'; if (startSynth()) say(T('Now playing: {t}', { t: NAMES()[R.station] })); } draw(); };
-    const vol = by('mvol'); if (vol) vol.oninput = () => { R.vol = +vol.value; put('haggle.vol', R.vol); if (R.master) R.master.gain.value = Math.pow(R.vol / 100, 2) * 0.7; if (R.aud) R.aud.volume = R.vol / 100; };
-    const sf = by('msfx'); if (sf) sf.onchange = () => { R.sfxOn = sf.checked; put('haggle.sfx', R.sfxOn ? 1 : 0); if (R.sfxOn) { ctx(); sfx('sale'); } };
-    const am = by('mamb'); if (am) am.onchange = () => { R.ambOn = am.checked; put('haggle.amb', R.ambOn ? 1 : 0); setAmb(); };
-    const f = by('mfile'); if (f) f.onchange = () => { R.src = 'phone'; addFiles(f.files); };
-    $$('[data-tr]').forEach((b) => b.onclick = () => { R.src = 'phone'; playTrack(+b.dataset.tr); });
-    const pv = by('mprev'), nx = by('mnext'), pp = by('mpp'), cl = by('mclr');
-    if (pv) pv.onclick = () => playTrack(R.ti - 1); if (nx) nx.onclick = () => playTrack(R.ti + 1); if (cl) cl.onclick = clearTracks;
-    if (pp) pp.onclick = () => { const a = audio(); if (a.paused) { if (R.ti < 0) playTrack(0); else { stopOthers('phone'); R.src = 'phone'; const p = a.play(); if (p && p.catch) p.catch(() => {}); } } else a.pause(); draw(); };
-    $$('[data-sh]').forEach((b) => b.onclick = () => { const x = R.shelf[+b.dataset.sh]; if (x) playLink(x.url, x.title); });
-    const go = by('mgo'), url = by('murl'); if (go) { go.onclick = () => playLink(url.value, ''); url.onkeydown = (e) => { if (e.key === 'Enter') go.click(); }; }
-  }
-  R.tab = 'radio';
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && R.open) { R.open = false; draw(); } });
-  const btn = document.getElementById('musicbtn'); if (btn) btn.onclick = () => { R.open = !R.open; if (R.open && R.tab === 'net') loadShelf(); draw(); if (R.open) { const h = document.querySelector('#music h2'); if (h) { h.tabIndex = -1; h.focus(); } } };
-
-  window.Radio = {
-    draw,
-    // The game tells the radio what the weather is today. Auto changes station at the next bar; weather sounds follow.
-    weather(k) { if (!WX_ST[k] || k === R.wx) return; R.wx = k; if (R.station === 'auto') R.pend = true; setAmb(); },
-    sfx,
-    _state: R,
-  };
-})();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})(typeof window !== 'undefined' ? window : globalThis);
