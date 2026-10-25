@@ -49,3 +49,31 @@ details{margin-bottom:14px}summary{cursor:pointer;font-weight:650;min-height:44p
 @media(max-width:380px){.metrics{grid-template-columns:1fr}.big{font-size:2rem}}
 @media(orientation:landscape) and (max-height:500px){.hero{padding:14px}}
 @media(prefers-reduced-motion:no-preference){.btn,.tabs button,.chip{transition:filter .15s}}
+/* Naija accent, language picker, install button, accessibility extras */
+.flag{height:5px;background:linear-gradient(90deg,#008751 0 33.3%,#fff 33.3% 66.6%,#008751 66.6% 100%)}
+.topr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.lang{width:auto;min-height:40px;padding:6px 10px;border-radius:999px;font-size:.9rem;font-weight:600}
+#inst{width:auto;margin:6px 0 10px}
+@media(max-width:520px){.top{align-items:flex-start;flex-direction:column}.topr{justify-content:flex-start}.live{text-align:left}}
+@media(forced-colors:active){.btn,.tabs button,.chip,.qb,.rep,input,select{border:1px solid ButtonText}.tabs button[aria-current=page],.chip[aria-pressed=true]{outline:2px solid Highlight}}
+@media print{.tabs,.top,.foot,.flag,.actions,.btn{display:none}body{background:#fff;color:#000}.card{border-color:#999}}
+/* Weather, grouped shelf, music */
+h4.grp{margin:14px 0 2px;color:var(--gold);font-size:.82rem;letter-spacing:.1em;text-transform:uppercase}
+.badge{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:var(--gold);color:#111;font-size:.72rem;font-weight:800;vertical-align:middle}
+.wx{font-size:1.05rem;margin:.6em 0}
+.card.ev{position:relative;overflow:hidden;isolation:isolate}
+.card.ev::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.55;pointer-events:none}
+.wx-sun::before{background:radial-gradient(circle at 92% 8%,rgba(244,201,93,.55),transparent 55%)}
+.wx-hot::before{background:radial-gradient(circle at 92% 8%,rgba(248,113,113,.5),transparent 50%),linear-gradient(180deg,rgba(244,160,60,.18),transparent)}
+.wx-cloud::before{background:linear-gradient(180deg,rgba(148,163,184,.25),transparent 70%)}
+.wx-rain::before{background:repeating-linear-gradient(105deg,rgba(125,170,255,.0) 0 14px,rgba(125,170,255,.28) 14px 15px),linear-gradient(180deg,rgba(60,90,160,.35),transparent);background-size:auto,auto}
+.wx-harm::before{background:linear-gradient(180deg,rgba(214,180,120,.3),rgba(214,180,120,.08))}
+@media(prefers-reduced-motion:no-preference){.wx-rain::before{animation:rain 1.1s linear infinite}.wx-hot::before{animation:heat 3s ease-in-out infinite alternate}.wx-harm::before{animation:haze 6s ease-in-out infinite alternate}}
+@keyframes rain{to{background-position:-30px 60px,0 0}}@keyframes heat{to{opacity:.8}}@keyframes haze{to{opacity:.85}}
+.musicbtn{min-height:40px;padding:6px 14px;border-radius:999px;border:1px solid var(--control);background:transparent;color:var(--text);font:600 .9rem var(--font);cursor:pointer}
+.musicbtn.on{border-color:var(--primary);color:var(--primary)}
+.music{border-color:var(--primary)}.mhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+input[type=checkbox]{width:auto;min-height:0;accent-color:var(--primary);margin-right:8px;transform:scale(1.3)}
+label.chk{display:flex;align-items:center;font-weight:500;margin:10px 0}
+.tracks,.shelf{list-style:none;margin:8px 0;padding:0}.tracks li,.shelf li{margin:6px 0}.shelf .btn{margin-top:0;justify-content:flex-start;text-align:left}
+.tracks .rep{width:100%;text-align:left;min-height:44px}

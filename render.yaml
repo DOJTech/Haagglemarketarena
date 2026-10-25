@@ -1,0 +1,38 @@
+# Render Blueprint: creates the game server and its database in one go.
+# Paid plans are used on purpose: Render's free web services sleep when idle and free databases are time-limited,
+# which is not acceptable for real players. Check Render's current pricing and plan names before you deploy.
+# Validate this file before pushing:  render blueprints validate render.yaml
+services:
+  - type: web
+    name: haggle-api
+    runtime: node
+    plan: starter
+    region: oregon          # keep the server and database in the same region (change both if you move)
+    numInstances: 1         # the rate limiter is in memory; see docs/PRODUCTION_CHECKLIST.md before scaling out
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: haggle-db
+          property: connectionString   # the private address: never leaves Render's network
+      - key: SEED_SECRET               # never change this after launch: it fixes the daily game and the public player refs
+        generateValue: true
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: TRUST_PROXY
+        value: "2"                     # Render's balancer + Netlify. Confirm with /api/admin/ip (see the checklist)
+      - key: ALLOWED_ORIGINS
+        sync: false   # Render will ask you; your Netlify URL and any custom domain, comma separated, https only
+      - key: PROXY_SECRET
+        sync: false   # Render will ask you; the same value you put in netlify.toml
+databases:
+  - name: haggle-db
+    plan: basic-256mb
+    region: oregon

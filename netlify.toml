@@ -1,0 +1,38 @@
+# Netlify hosts the game pages. The game server and database live on Render.
+# BEFORE YOU DEPLOY:
+#   1. Replace haggle-api below if your Render service has a different name.
+#   2. Replace PUT-YOUR-PROXY-SECRET-HERE with the same long random value you set as PROXY_SECRET on Render
+#      (generate one with: openssl rand -hex 32). Keep this repository PRIVATE, or rotate the value if it ever leaks.
+[build]
+  publish = "public"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://haggle-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+  headers = {X-Proxy-Key = "PUT-YOUR-PROXY-SECRET-HERE"}
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob: https:; frame-src https://open.spotify.com https://www.youtube-nocookie.com https://embed.music.apple.com https://audiomack.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Sponsor report links carry a private token: never cache them, never index them, never leak them in a referrer.
+[[headers]]
+  for = "/report.html"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex, nofollow"
