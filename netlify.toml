@@ -8,7 +8,7 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://haggle-api.onrender.com/api/:splat"
+  to = "https://haagglemarketarena.onrender.com/api/:splat"
   status = 200
   force = true
   headers = {X-Proxy-Key = "PUT-YOUR-PROXY-SECRET-HERE"}
@@ -23,7 +23,7 @@
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     Cross-Origin-Opener-Policy = "same-origin"
     Cross-Origin-Resource-Policy = "same-origin"
-    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; media-src 'self' blob: https:; frame-src https://open.spotify.com https://www.youtube-nocookie.com https://embed.music.apple.com https://audiomack.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+            Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; media-src 'self' blob: https:; frame-src https://open.spotify.com https://www.youtube-nocookie.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 
 [[headers]]
   for = "/sw.js"
