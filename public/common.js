@@ -54,5 +54,5 @@ function errText(e){
  if(e.status===403)return T('This website is not allowed to reach the game server. (Owner: check ALLOWED_ORIGINS on Render.)');
  if(e.status===429)return T('Too many tries. Please wait a minute.');
  if(!e.status||e.status>=500)return T('Cannot reach the game server right now. Check your internet, then try again in a minute.');
- return T('That did not go through. Please try again.');
+ return T('That did not go through. Please try again.')+' (code '+(e.status||e.message)+')';
 }
