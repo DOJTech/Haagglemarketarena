@@ -1,0 +1,57 @@
+/* Illustrated market scene: upper market, busy road, lower market. Decorative only. */
+:root{--glass:rgba(11,18,32,.74);--glow:0 10px 40px rgba(16,185,129,.18)}
+body{background:#0B1220;position:relative;min-height:100vh}
+#scene{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:linear-gradient(180deg,#1b2a52 0%,#c2587a 22%,#f4a259 33%,#3a2a2a 34%,#1a1420 100%)}
+#scene .stars{position:absolute;inset:0 0 70% 0;background-image:radial-gradient(1.5px 1.5px at 20% 20%,#fff,transparent),radial-gradient(1.5px 1.5px at 70% 12%,#fff,transparent),radial-gradient(1px 1px at 45% 30%,#fff,transparent),radial-gradient(1px 1px at 88% 28%,#fff,transparent);opacity:.7}
+#scene .sun{position:absolute;left:50%;top:8%;width:clamp(90px,16vw,190px);aspect-ratio:1;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle,#fff6c9 0 30%,#ffd166 55%,rgba(255,209,102,0) 72%);animation:pulse 6s ease-in-out infinite alternate}
+#scene .hills{position:absolute;left:0;right:0;top:20%;height:14%;background:linear-gradient(180deg,#3b2a56,#2a1f3d);clip-path:polygon(0 70%,8% 40%,18% 62%,30% 30%,44% 60%,58% 25%,72% 58%,86% 35%,100% 60%,100% 100%,0 100%)}
+#scene .zone{position:absolute;left:0;right:0}
+.m-up{top:30%;height:23%;background:linear-gradient(180deg,#4a3326,#2c2024)}
+.m-dn{top:68%;bottom:0;background:linear-gradient(180deg,#2c2024,#0B1220)}
+.road{top:53%;height:15%;background:linear-gradient(180deg,#5b5f6b 0,#3a3d47 6%,#2b2e37 94%,#5b5f6b 100%);border-top:4px solid #9aa1ad;border-bottom:4px solid #9aa1ad}
+.road::after{content:"";position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;background:repeating-linear-gradient(90deg,#F4C95D 0 38px,transparent 38px 76px)}
+.stalls{position:absolute;left:0;right:0;display:flex;justify-content:space-around;align-items:flex-end;padding:0 1%}
+.stalls.up{top:2%;height:70%}.stalls.dn{top:3%;height:60%}
+.stall{position:relative;width:clamp(52px,8.4vw,112px);text-align:center;font-size:clamp(.8rem,2vw,1.45rem)}
+.stall i{display:block;height:clamp(12px,2.4vw,22px);border-radius:7px 7px 0 0;background:repeating-linear-gradient(90deg,var(--c) 0 11px,#fff 11px 22px);box-shadow:0 6px 12px rgba(0,0,0,.4)}
+.stall .sl{height:clamp(30px,6vw,64px);display:flex;justify-content:center;align-items:flex-end;overflow:hidden}
+.stall .sl svg{height:100%;width:auto}
+.stall b{display:block;font-weight:400;background:#5a3b22;border-radius:0 0 6px 6px;padding:2px 0;letter-spacing:.05em;white-space:nowrap}
+.prop{position:absolute;bottom:-6%;font-size:clamp(.9rem,2.4vw,1.7rem);filter:drop-shadow(0 4px 3px rgba(0,0,0,.5))}
+.bunt{position:absolute;left:0;right:0;top:-1%;display:flex;justify-content:space-between;overflow:hidden}
+.bunt s{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:15px solid var(--c)}
+.walkers{position:absolute;left:0;right:0}
+.walkers.up{top:50%;height:50%}.walkers.dn{top:8%;bottom:0}
+.walker{position:absolute;left:0;height:var(--h);will-change:transform;animation:walk var(--d) linear var(--dl) infinite;filter:drop-shadow(0 5px 3px rgba(0,0,0,.45))}
+.walker.rev{animation-name:walkr}
+.walker svg{height:100%;width:auto;display:block}
+.lg,.ar{transform-origin:20px 46px}.ar{transform-origin:20px 24px}
+.lg.a{animation:sw .55s ease-in-out infinite alternate}.lg.b{animation:sw .55s ease-in-out infinite alternate-reverse}
+.ar.a{animation:sw .55s ease-in-out infinite alternate-reverse}.ar.b{animation:sw .55s ease-in-out infinite alternate}
+.wk svg{animation:bob .275s ease-in-out infinite alternate}
+.veh{position:absolute;left:0;will-change:transform;animation:drive var(--d) linear var(--dl) infinite;filter:drop-shadow(0 6px 4px rgba(0,0,0,.5))}
+.veh.rev{animation-name:driver}
+.veh svg{display:block;width:100%;height:auto}
+.bus{width:clamp(120px,17vw,210px)}.taxi{width:clamp(68px,9.5vw,118px)}
+.l1{bottom:54%}.l2{bottom:6%}
+.wh{transform-box:fill-box;transform-origin:center;animation:spin .5s linear infinite}
+#scene .vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 35%,rgba(5,8,16,.62))}
+@keyframes walk{from{transform:translateX(-12vw)}to{transform:translateX(112vw)}}
+@keyframes walkr{from{transform:translateX(112vw) scaleX(-1)}to{transform:translateX(-12vw) scaleX(-1)}}
+@keyframes drive{from{transform:translateX(-26vw)}to{transform:translateX(112vw)}}
+@keyframes driver{from{transform:translateX(112vw) scaleX(-1)}to{transform:translateX(-26vw) scaleX(-1)}}
+@keyframes sw{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
+@keyframes bob{to{transform:translateY(-2px)}}@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{to{transform:translateX(-50%) scale(1.08)}}
+/* glass cards keep the game readable over the scene */
+.card{background:var(--glass);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%);border-color:rgba(255,255,255,.14);box-shadow:var(--glow)}
+.metric{background:rgba(22,36,59,.8)}
+.top{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,rgba(11,18,32,.92),rgba(11,18,32,.6));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.brand{font-size:1.05rem}.brand b{background:linear-gradient(90deg,#10B981,#F4C95D);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{background:linear-gradient(90deg,#fff,#F4C95D);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn:not(.alt):not(.danger){background:linear-gradient(135deg,#10B981,#0ea371);box-shadow:0 8px 24px rgba(16,185,129,.35)}
+.face{font-size:3rem;filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+@media(prefers-reduced-motion:no-preference){.card{animation:rise .45s ease both}.btn:active{transform:scale(.97)}.btn{transition:filter .15s,transform .1s}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+@media(prefers-reduced-motion:reduce){.walker,.veh,.lg,.ar,.wh,.wk svg,#scene .sun{animation:none}.walker,.veh{left:calc(var(--i)*8%)}}
+@media(max-width:620px){.stall:nth-child(n+5),.prop:nth-of-type(n+4){display:none}.btn{min-height:52px}.walker:nth-child(n+9){display:none}}

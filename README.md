@@ -1,20 +1,23 @@
 # Haggle
 Built by Dolapo Oyatomi. (c) 2026, all rights reserved.
 
-Haggle Market Arena (v2.0 beta): a market negotiation simulation with a server-run engine. Simulation only; no real money. Node + Postgres. No Claude or Anthropic services are used.
+A daily market game with a server-run, cheat-resistant engine. Node + Postgres. No Claude or Anthropic services are used.
 
-- **Deploy:** `docs/DEPLOY.md` (GitHub, then Render for the server and database, then Netlify for the pages)
-- **Sponsors and price tests (what it is and is not):** `docs/AD_PLATFORM.md`; validating results: `docs/PILOT_PLAYBOOK.md`
-- **Security status, accounts and owner sign-in:** `docs/SECURITY_REVIEW.md`; independent-review brief and hosting-account checklist: `docs/REVIEW_BRIEF.md`; backups and uptime monitoring: `docs/BACKUPS_AND_MONITORING.md`
-- **Going live properly:** `docs/LAUNCH_GATES.md` (the checklist), `docs/PRODUCTION_SETUP.md` (paid hosting), `docs/STAGING.md`, `docs/EMAIL_SETUP.md`, `docs/MONITORING.md`, `docs/CI_GUIDE.md`
-- **Tests:** `npm run test:unit` needs no database; the full suites need a scratch Postgres (see `docs/DEPLOY.md`)
-- **Rules and scoring:** `docs/RULES.md` (generated from `engine.js`)
-- **Quality report, defects, security review:** `docs/QUALITY_REPORT.md`, `docs/DEFECT_REGISTER.md`, `docs/SECURITY_REVIEW.md`
-- **Deploy safely and roll back:** `docs/DEPLOYMENT_CHECKLIST.md`, `docs/ROLLBACK.md`
-- **Something not working?** `docs/TROUBLESHOOTING.md`
-- **Red flags and status:** `docs/RED_FLAGS.md`
-- **For investors:** `docs/INVESTOR_BRIEF.md`
-- **Owner metrics:** open `/#owner` on your site, tap Metrics, enter your `ADMIN_KEY` and the code from your authenticator app (set up once with `npm run make-owner-secret`)
+- **Go-live steps:** `docs/PRODUCTION_CHECKLIST.md`
+- **What is protected and what is still open:** `docs/SECURITY_NOTES.md`
+- **Deploy walkthrough, red flags, investors:** `docs/DEPLOY.md`, `docs/RED_FLAGS.md`, `docs/INVESTOR_BRIEF.md`
+- **Owner metrics:** open `/#owner` on your site, tap Metrics, enter your `ADMIN_KEY`
 - **Before public launch:** fill the [brackets] in `public/privacy.html` and `public/terms.html` and get a lawyer to review them.
 
-How cheating is blocked, how moderation works, and what is still open are all in `docs/RED_FLAGS.md`.
+## Run locally
+```
+cp .env.example .env      # edit the secrets and DATABASE_URL
+npm ci
+npm run dev
+npm test                  # engine + name-filter tests; add TEST_DATABASE_URL for the API tests
+```
+- **Languages and Naija flavour:** `docs/LOCALIZATION.md`
+- **Music, currency, weather:** `docs/MUSIC_AND_CURRENCY.md`
+
+## Layout
+`public/` the pages (game, owner, sponsor report, languages, radio, currency), `server.js` boot and shutdown, `app.js` routes and guards, `lib/engine.js` the game, `lib/moderation.js` names, `lib/config.js` settings checks, `lib/ratelimit.js` limits, `test/` tests.

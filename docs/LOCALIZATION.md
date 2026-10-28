@@ -14,3 +14,6 @@ The Pidgin and French were drafted by an AI assistant, not a native-speaker prof
 1. Add the language to `LANGS`, `LOCALES` and `HTML_LANG` in `public/i18n.js` (for example `yo`, `ha`, `ig`), to the `<select id="lang">` in `public/index.html`, and to the allowed values for `haggle.lang` in `public/common.js`.
 2. Copy the `pcm` block in `DICT`, rename it, and translate each value. Keep every `{placeholder}` and `<b>` tag exactly as it is.
 3. Have a native speaker review it, then add it to the checks in `test/i18n.test.js`.
+
+## Extra languages
+`public/i18n-more.js` adds Spanish, Portuguese, German, Swahili, Hausa, Yoruba, Igbo, Arabic (right-to-left) and Hindi for the main screens; other text falls back to English. Have native speakers review Hausa, Yoruba and Igbo before launch.
