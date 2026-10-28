@@ -46,6 +46,8 @@ async function start(daily){
  if(draft)put('haggle.name',draft);else del('haggle.name');
  if(draftCc)put('haggle.country',draftCc);
  setBusy(true);msg='';
+ if(PHOTO&&get('haggle.psync')!=='1'){try{await api('me/photo',{id:DEV,photo:PHOTO});put('haggle.psync','1')}catch(e){}}
+ showTab('play');
  try{S=await withRetry(()=>api('run/start',{id:DEV,name:draft,mode:daily?'daily':'practice',country:draftCc||'OTHER'}),6);put('haggle.run',S.runId);msg='';sr(T('Game started. Day 1 of {n}.',{n:DAYS}))}
  catch(e){msg=errText(e)}
  setBusy(false);render();
@@ -58,6 +60,45 @@ const OPEN=['I will give you {n}.','How about {n}? Make we do am.','My budget is
 const HIGH=['Too high! My best is {n}.','Abeg, reduce small. My best is {n}.','Ah! You want to finish me? {n} is my best.'];
 const said=c=>{const L=c.said==='high'?HIGH:OPEN;return T(L[(c.name.length+(S.idx||0)+c.pat)%L.length],{n:N(c.offer)})};
 
+/* ---------- profile photo: take one with the camera, or pick one from the phone or computer ---------- */
+let PHOTO=get('haggle.photo')||'',photoMsg='';
+const flag=c=>/^[A-Z]{2}$/.test(c||'')?String.fromCodePoint(...[...c].map(x=>127397+x.charCodeAt(0))):'\uD83C\uDF0D';
+const initial=n=>esc((cleanName(n)[0]||'T').toUpperCase());
+// Crop the middle square, shrink to 112px and re-encode as JPEG: small, and it drops any hidden camera data.
+function squareJpeg(src,w,h){
+ const c=document.createElement('canvas'),z=112,m=Math.min(w,h);c.width=c.height=z;
+ c.getContext('2d').drawImage(src,(w-m)/2,(h-m)/2,m,m,0,0,z,z);
+ return c.toDataURL('image/jpeg',0.72);
+}
+async function savePhoto(url){
+ PHOTO=url;if(url)put('haggle.photo',url);else del('haggle.photo');put('haggle.psync','0');photoMsg='';
+ const pv=$('#pv');if(pv)pv.outerHTML=avatarHtml(PHOTO,draft||get('haggle.name')||'Trader','pv');
+ try{await api('me/photo',{id:DEV,photo:url});put('haggle.psync','1');photoMsg=T('Photo saved.')}
+ catch(e){photoMsg=T('Photo kept on this device. It will be saved when you start a game.')}
+ const m=$('#pm');if(m)m.textContent=photoMsg;
+}
+const avatarHtml=(src,name,id)=>src?`<img class="av"${id?` id="${id}"`:''} src="${esc(src)}" alt="${esc(T('Your photo'))}" width="56" height="56">`:`<span class="av ph"${id?` id="${id}"`:''} aria-hidden="true">${initial(name)}</span>`;
+function pickFile(f){
+ if(!f||!/^image\//.test(f.type)){photoMsg=T('Please choose an image file.');const m=$('#pm');if(m)m.textContent=photoMsg;return}
+ const img=new Image(),u=URL.createObjectURL(f);
+ img.onload=()=>{try{savePhoto(squareJpeg(img,img.naturalWidth,img.naturalHeight))}finally{URL.revokeObjectURL(u)}};
+ img.onerror=()=>{URL.revokeObjectURL(u);photoMsg=T('That image could not be read. Try another.');const m=$('#pm');if(m)m.textContent=photoMsg};
+ img.src=u;
+}
+async function openCamera(){
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){const f=$('#pcam');if(f)f.click();return}
+ let st;
+ try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:720}},audio:false})}
+ catch(e){const f=$('#pcam');if(f)f.click();return}   // permission refused: fall back to the phone's own camera picker
+ const o=document.createElement('div');o.className='camov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-label',T('Take a photo'));
+ o.innerHTML=`<div class="cambox"><video autoplay playsinline muted></video><p class="hint">${T('Centre your face in the square, then tap Take photo.')}</p><div class="actions"><button class="btn" type="button" id="snap">${T('Take photo')}</button><button class="btn alt" type="button" id="cx">${T('Cancel')}</button></div></div>`;
+ document.body.appendChild(o);
+ const v=o.querySelector('video');v.srcObject=st;
+ const close=()=>{st.getTracks().forEach(t=>t.stop());o.remove()};
+ o.querySelector('#cx').onclick=close;
+ o.querySelector('#snap').onclick=()=>{if(v.videoWidth){const u=squareJpeg(v,v.videoWidth,v.videoHeight);close();savePhoto(u)}};
+ o.querySelector('#snap').focus();
+}
 function langBar(){return ''}
 function landing(){return `<section class="card hero" aria-labelledby="h1">
 <p class="eyebrow">HAGGLE MARKET ARENA</p>
@@ -76,15 +117,20 @@ function setupHtml(){
 ${PROF&&PROF.streak?`<p class="win">${T('{n}-day streak. Play today to keep it.',{n:PROF.streak})}</p>`:''}
 <p>${TH('Your <b>simulated</b> starting balance is <b>{n}</b>. It is pretend money that exists only in this game.',{n:N(20000)})}</p>
 <p class="warnbox">${T('Your display name, country and score appear on the public leaderboard. Do not use your real name, phone number or any personal details.')}</p>
-<label for="nm">${T('Display name (3 to 20 characters)')}</label>
-<input id="nm" type="text" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" value="${esc(nm)}" aria-describedby="nmh">
+<div class="idrow"><div class="idname"><label for="nm">${T('Display name (3 to 20 characters)')}</label>
+<input id="nm" type="text" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" value="${esc(nm)}" aria-describedby="nmh"></div>
+<div class="idpic"><span class="lbl">${T('Your photo')}</span>${avatarHtml(PHOTO,nm,'pv')}
+<div class="picbtns"><button class="btn alt sm" type="button" id="pcambtn">${T('Take photo')}</button><button class="btn alt sm" type="button" id="pfilebtn">${T('Choose image')}</button>${PHOTO?`<button class="btn alt sm" type="button" id="prm">${T('Remove')}</button>`:''}</div>
+<input id="pcam" type="file" accept="image/*" capture="user" hidden><input id="pfile" type="file" accept="image/*" hidden>
+<p id="pm" class="hint" role="status">${esc(photoMsg)}</p></div></div>
 <p id="nmh" class="hint">${T('Letters, numbers, spaces, dots, underscores and hyphens. Names must be unique. Leave it blank for an automatic name.')}</p>
 <label for="cc">${T('Country (optional, self-declared, for country leagues)')}</label>
 <select id="cc"><option value="">${T('Prefer not to say')}</option>${Object.entries(CT).map(([k,v])=>`<option value="${k}"${cc===k?' selected':''}>${esc(T(v))}</option>`).join('')}</select>
 ${errBox()}
 <button class="btn" id="go" type="button">${T("Start today's ranked market")}</button>
 <button class="btn alt" id="prac" type="button">${T('Practice run (not ranked)')}</button>
-<p class="hint">${T('One ranked run per day. Everyone gets the same market that day, so scores are comparable. Practice as much as you like.')}</p></section>`}
+<p class="hint">${T('One ranked run per day. Everyone gets the same market that day, so scores are comparable. Practice as much as you like.')}</p>
+<p class="hint">${T('Every game is saved automatically after each move. Close the page any time and carry on later.')}</p></section>`}
 function stage(){
  const m=errBox();
  if(S.phase==='stock'){
@@ -147,7 +193,7 @@ function renderDash(){
  d.hidden=false;
  d.innerHTML=`<div class="card"><h3>${T('Your business')}</h3><p class="hint">${T('Campaign: {d} of {n} days complete',{d:done,n:DAYS})}</p><p class="hint"><span aria-hidden="true">${(WXI[S.wx.k]||WXI.sun).e}</span> ${esc(T((WXI[S.wx.k]||WXI.sun).n))}</p><progress max="${DAYS}" value="${done}" aria-label="${esc(T('Campaign progress'))}">${done} / ${DAYS}</progress>
 <dl class="metrics">${stat(T('Starting balance (simulated)'),N(f.start))}${stat(T('Cash'),N(f.cash))}${stat(T('Revenue'),N(f.rev))}${stat(T('Cost of goods sold'),N(f.cogs))}${stat(T('Gross profit'),signed(f.gross))}${stat(T('Gross margin'),f.margin===null?T('n/a (no sales yet)'):f.margin+'%')}${stat(T('Units purchased'),f.unitsBought)}${stat(T('Units sold'),f.unitsSold)}${stat(T('Stock on hand'),T('{u} units ({c} at cost)',{u:f.invUnits,c:N(f.invCost)}))}${stat(T('Spoilage written off'),N(f.writeOff))}${stat(T('Transactions'),f.tx)}${stat(T('Customer satisfaction'),f.satisfaction===null?T('n/a yet'):T('{s} out of 100',{s:f.satisfaction}))}</dl>
-<p class="hint">${T('Gross profit is revenue minus the cost of the goods you sold. Rent and wages are not modelled.')}</p></div>
+<p class="hint">${T('Gross profit is revenue minus the cost of the goods you sold. Rent and wages are not modelled.')}</p><p class="hint">\u2713 ${T('Saved automatically after every move.')}</p></div>
 <div class="card"><h3>${T('Transaction history')}</h3>${hist.length?`<ul class="hist">${hist.map(h=>`<li>${esc(T('Day {d}: {l}',{d:h.d,l:HL[h.k]?HL[h.k](h):h.k}))}</li>`).join('')}</ul>`:`<p class="hint">${T('No transactions yet.')}</p>`}</div>`;
 }
 function render(){
@@ -166,7 +212,10 @@ function wire(){
  const on=(id,f)=>{const e=$('#'+id);if(e)e.onclick=f};
  on('enter',()=>{setup=true;render()});on('howbtn',()=>showTab('how'));
  const cs=$('#cc');if(cs)cs.onchange=()=>{if(get('haggle.cur'))return;const nm=$('#nm');draft=nm?nm.value:draft;draftCc=cs.value;setCur(CC_CUR[cs.value]||'NGN');renderAll()};
- on('go',()=>start(true));on('prac',()=>start(false));on('again',()=>start(false));
+ on('go',()=>start(true));
+ on('pcambtn',openCamera);on('pfilebtn',()=>$('#pfile').click());on('prm',()=>savePhoto(''));
+ ['pcam','pfile'].forEach(id=>{const f=$('#'+id);if(f)f.onchange=()=>{pickFile(f.files&&f.files[0]);f.value=''}});
+ const nmi=$('#nm');if(nmi)nmi.oninput=()=>{draft=nmi.value;const pv=$('#pv');if(pv&&pv.classList.contains('ph'))pv.innerHTML=initial(nmi.value)};on('prac',()=>start(false));on('again',()=>start(false));
  document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>act('buy',{pid:b.dataset.b,dir:+b.dataset.d}));
  on('open',()=>act('open'));on('nx',()=>act('next'));on('nd',()=>act('nextday'));on('lg',()=>act('leave'));
  on('acc',()=>{const c=S.cur;if(c.offer<S.basis[c.p]&&confirmLoss!=='acc'){confirmLoss='acc';render();return}act('accept')});
@@ -180,9 +229,9 @@ function wire(){
 }
 function renderLB(){
  const opt=Object.entries(CT).map(([k,v])=>`<option value="${k}"${k===lbCountry?' selected':''}>${esc(T(v))}</option>`).join('');
- let h=`<div class="card"><h2>${T('Leaders')}</h2><div class="ctl"><button class="chip" type="button" data-r="today" aria-pressed="${lbRange==='today'}">${T('Today')}</button><button class="chip" type="button" data-r="week" aria-pressed="${lbRange==='week'}">${T('This week')}</button></div>
+ let h=`<div class="card"><h2>${T('Leaders')}</h2><p class="hint">${lbCountry?T('Top 20 in this country'):T('Top 20 worldwide')}</p><div class="ctl"><button class="chip" type="button" data-r="today" aria-pressed="${lbRange==='today'}">${T('Today')}</button><button class="chip" type="button" data-r="week" aria-pressed="${lbRange==='week'}">${T('This week')}</button></div>
 <label for="lbc">${T('Country')}</label><select id="lbc"><option value="">${T('All countries')}</option>${opt}</select>`;
- h+=LB.length?`<div class="tw"><table><caption class="sr-only">${T('Leaderboard')}</caption><tr><th>${T('Rank')}</th><th>${T('Display name')}</th><th>${T('Score')}</th><th><span class="sr-only">${T('Report')}</span></th></tr>${LB.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(cleanName(r.name))}${r.country?` <span class="hint">${esc(r.country)}</span>`:''}</td><td>${r.daily||0}</td><td><button class="rep" type="button" data-ref="${esc(r.ref||'')}" aria-label="${esc(T('Report this name'))}">${T('Report')}</button></td></tr>`).join('')}</table></div>`:`<p>${T('No ranked scores here yet. Finish a ranked week to be first.')}</p>`;
+ h+=LB.length?`<div class="tw"><table><caption class="sr-only">${T('Leaderboard')}</caption><tr><th>${T('Rank')}</th><th>${T('Display name')}</th><th>${T('Country')}</th><th>${T('Score')}</th><th><span class="sr-only">${T('Report')}</span></th></tr>${LB.map((r,i)=>`<tr${i<3?' class="top3"':''}><td>${['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][i]||i+1}</td><td><span class="lbname">${avatarHtml(r.avatar,r.name)}<b>${esc(cleanName(r.name))}</b></span></td><td>${flag(r.country)} <span class="hint">${esc(T(CT[r.country]||'Other'))}</span></td><td>${r.daily||0}</td><td><button class="rep" type="button" data-ref="${esc(r.ref||'')}" aria-label="${esc(T('Report this name'))}">${T('Report')}</button></td></tr>`).join('')}</table></div>`:`<p>${T('No ranked scores here yet. Finish a ranked week to be first.')}</p>`;
  const b=bestScore();
  h+=(b!==null?`<p class="hint">${T('Your best on this device: {n} points.',{n:b})}</p>`:'')+`<details><summary>${T('How ranking works')}</summary><p>${T('Ranking uses your score out of 1000, calculated by the server from your decisions. It rewards profit, healthy margins, happy customers, careful stock and steady days, not revenue alone. Ties go to whoever finished first. The weekly board adds your ranked daily scores. Only one ranked run per day counts. See How it works for the formula.')}</p></details></div>`;
  $('#lead').innerHTML=h;
@@ -254,8 +303,8 @@ $('#cur').innerHTML=Object.keys(CUR).map(c=>`<option value="${c}">${esc(CUR[c].s
 $('#cur').onchange=e=>{setCur(e.target.value,true);renderAll()};
 initLang();initCur();renderAll();tick();setInterval(()=>{if(!document.hidden)tick()},30000);
 (async()=>{
- const rid=get('haggle.run');
- if(rid){try{const v=await api('run/start',{id:DEV,resume:rid});if(v.phase!=='final')S=v;else del('haggle.run')}catch(e){del('haggle.run')}}
+ const rid=get('haggle.run')||'latest';
+ if(rid){try{const v=await api('run/start',{id:DEV,resume:rid});if(v.phase!=='final'){S=v;put('haggle.run',v.runId)}else del('haggle.run')}catch(e){del('haggle.run')}}
  render();loadProfile();loadRules();
 })();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});

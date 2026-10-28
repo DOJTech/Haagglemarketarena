@@ -560,7 +560,22 @@ const DICT={
   "Lagos Nights": "Nuits de Lagos",
   "Market Hustle": "Effervescence du marché",
   "Highlife Gold": "Highlife doré",
-  "Rainy Day": "Jour de pluie"
+  "Rainy Day": "Jour de pluie",
+  "Photo saved.": "Photo enregistrée.",
+  "Photo kept on this device. It will be saved when you start a game.": "Photo conservée sur cet appareil. Elle sera enregistrée au début d'une partie.",
+  "Your photo": "Votre photo",
+  "Please choose an image file.": "Veuillez choisir un fichier image.",
+  "That image could not be read. Try another.": "Cette image est illisible. Essayez-en une autre.",
+  "Take a photo": "Prendre une photo",
+  "Centre your face in the square, then tap Take photo.": "Centrez votre visage dans le carré, puis touchez Prendre une photo.",
+  "Take photo": "Prendre une photo",
+  "Cancel": "Annuler",
+  "Choose image": "Choisir une image",
+  "Remove": "Supprimer",
+  "Every game is saved automatically after each move. Close the page any time and carry on later.": "Chaque partie est enregistrée automatiquement après chaque coup. Fermez la page quand vous voulez et reprenez plus tard.",
+  "Saved automatically after every move.": "Enregistré automatiquement après chaque coup.",
+  "Top 20 in this country": "Top 20 dans ce pays",
+  "Top 20 worldwide": "Top 20 mondial"
  }
 };
 function T(s,v){const d=DICT[LANG],o=(d&&d[s])||s;return v?o.replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m):o}

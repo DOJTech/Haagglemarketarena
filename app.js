@@ -19,6 +19,7 @@ alter table players add column if not exists banned boolean default false;
 alter table scores add column if not exists ref text;
 alter table scores add column if not exists hidden boolean default false;
 alter table players add column if not exists country text;
+alter table players add column if not exists avatar text;
 alter table scores add column if not exists country text;
 create table if not exists reports(day date,reporter text,target text,created timestamptz default now(),primary key(day,reporter,target));
 alter table reports add column if not exists ip text;
@@ -74,7 +75,7 @@ function createApp(cfg, pool) {
   app.use((q, r, n) => {
     r.set({
       'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY',
-      'Permissions-Policy': 'geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()',
+      'Permissions-Policy': 'geolocation=(), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'Content-Security-Policy': CSP,
       'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Resource-Policy': 'same-origin',
     });
@@ -94,6 +95,7 @@ function createApp(cfg, pool) {
   });
   // 3. Only your own website may POST.
   app.use('/api', (q, r, n) => (q.method === 'POST' && cfg.origins.length && !cfg.origins.includes(q.get('origin') || '') ? r.status(403).json({ error: 'origin' }) : n()));
+  app.use('/api/me/photo', express.json({ limit: '40kb' }));   // a small square photo, re-encoded by the browser
   app.use('/api', express.json({ limit: '4kb' }));
   const dev = (id, bucket, max) => devLim.hit(bucket + id, max);
   const tooMany = (r) => r.set('Retry-After', '30').status(429).json({ error: 'slow down' });
@@ -118,7 +120,7 @@ function createApp(cfg, pool) {
   }, 6e4); sweepTimer.unref();
   async function upkeep() {
     await pool.query("delete from presence where last_seen<now()-interval '1 day'");
-    await pool.query("delete from runs where status='active' and updated<now()-interval '2 days'");
+    await pool.query("delete from runs where status='active' and updated<now()-interval '14 days'");
     await pool.query("delete from ranked_runs where day<current_date-7");
     await pool.query("delete from reports where day<current_date-30");
     await pool.query("delete from runs where status='done' and updated<now()-make_interval(days=>$1)", [cfg.retentionDays]);
@@ -155,8 +157,8 @@ function createApp(cfg, pool) {
     const wk = q.query.range === 'week', cc = COUNTRIES.includes(q.query.country) ? q.query.country : null;
     // Ties go to whoever finished first.
     const rows = await cached('lb:' + (wk ? 'w' : 't') + (cc || ''), 5000, async () => wk
-      ? (await pool.query("select case when bool_or(hidden) then 'Hidden name' else max(name) end as name,sum(score)::int as daily,ref,count(*)::int days,max(country) country from scores where day>current_date-7 and v=" + ENGINE_V + " and ref is not null and ($1::text is null or country=$1) group by ref order by sum(score) desc, max(created) asc limit 20", [cc])).rows
-      : (await pool.query("select case when hidden then 'Hidden name' else name end as name,score as daily,ref,country from scores where day=$1 and v=" + ENGINE_V + " and ref is not null and ($2::text is null or country=$2) order by score desc, created asc limit 20", [today(), cc])).rows);
+      ? (await pool.query("select case when bool_or(hidden) then 'Hidden name' else max(name) end as name,sum(score)::int as daily,ref,count(*)::int days,max(country) country,case when bool_or(hidden) then null else (select p.avatar from players p where p.id=max(scores.id)) end as avatar from scores where day>current_date-7 and v=" + ENGINE_V + " and ref is not null and ($1::text is null or country=$1) group by ref order by sum(score) desc, max(created) asc limit 20", [cc])).rows
+      : (await pool.query("select case when hidden then 'Hidden name' else name end as name,score as daily,ref,country,case when hidden then null else (select p.avatar from players p where p.id=scores.id) end as avatar from scores where day=$1 and v=" + ENGINE_V + " and ref is not null and ($2::text is null or country=$2) order by score desc, created asc limit 20", [today(), cc])).rows);
     r.json({ rows });
   }));
 
@@ -198,16 +200,40 @@ function createApp(cfg, pool) {
     r.json({ streak, plays: p.rows[0].n, bestRanked: b.rows[0].best });
   }));
 
+  // Profile photo: a small square JPEG that the browser has already cropped and re-encoded. Checked again here.
+  const okPhoto = (s) => {
+    if (s === '') return true;
+    if (typeof s !== 'string' || s.length > 30000 || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(s)) return false;
+    const buf = Buffer.from(s.slice(23), 'base64');
+    return buf.length > 200 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  };
+  app.post('/api/me/photo', w(async (q, r) => {
+    const b = q.body || {}; if (!okId(b.id) || !okPhoto(b.photo)) return r.status(400).json({ error: 'bad_photo' });
+    if (dev(b.id, 'photo', 10)) return tooMany(r);
+    await ready;
+    await pool.query('insert into players(id,avatar) values($1,$2) on conflict(id) do update set avatar=$2,last_seen=now()', [b.id, b.photo || null]);
+    bust(); r.json({ ok: 1 });
+  }));
+
   app.post('/api/run/start', w(async (q, r) => {
     const b = q.body || {}; if (!okId(b.id)) return r.status(400).json({ error: 'bad id' });
     if (dev(b.id, 'start', 20)) return tooMany(r);
     await ready;
+    if (b.resume === 'latest') {   // after a reload or a cleared browser, carry on with the newest unfinished game
+      const x = await pool.query("select * from runs where player=$1 and status='active' order by updated desc limit 1", [b.id]), row = x.rows[0];
+      if (!row || !row.state || row.state.v !== ENGINE_V) return r.status(404).json({ error: 'gone' });
+      return r.json(eng.view(row.state, row));
+    }
     if (b.resume) {
       if (!okRun(b.resume)) return r.status(404).json({ error: 'gone' });
       const x = await pool.query('select * from runs where id=$1 and player=$2', [b.resume, b.id]), row = x.rows[0];
       if (!row) return r.status(404).json({ error: 'gone' });
       if (!row.state || row.state.v !== ENGINE_V) return r.status(410).json({ error: 'old_version' });
       return r.json(eng.view(row.state, row));
+    }
+    if (b.mode === 'daily') {   // tapping the ranked button again carries on today's unfinished ranked game
+      const x = await pool.query("select * from runs where player=$1 and status='active' and ranked and day=$2 order by started desc limit 1", [b.id, today()]), row = x.rows[0];
+      if (row && row.state && row.state.v === ENGINE_V) return r.json(eng.view(row.state, row));
     }
     const cc = COUNTRIES.includes(b.country) ? b.country : 'OTHER';
     // Display names are unique. A blank name means "give me an automatic one".
@@ -258,8 +284,8 @@ function createApp(cfg, pool) {
       const id = crypto.randomBytes(16).toString('hex'), s = eng.fresh(ranked, day, id, { mult, sponsor, variant, cid });
       s.note = note;
       await c.query('insert into runs(id,player,mode,day,ranked,state,ip,cid,variant) values($1,$2,$3,$4,$5,$6,$7,$8,$9)', [id, b.id, ranked ? 'daily' : 'practice', day, ranked, s, ip, cid, variant]);
-      // Keep at most 5 unfinished practice runs per player so the database cannot be filled with abandoned runs.
-      await c.query("delete from runs where player=$1 and status='active' and not ranked and id not in (select id from runs where player=$1 and status='active' order by started desc limit 5)", [b.id]);
+      // Keep at most 20 unfinished practice runs per player so the database cannot be filled with abandoned runs.
+      await c.query("delete from runs where player=$1 and status='active' and not ranked and id not in (select id from runs where player=$1 and status='active' order by started desc limit 20)", [b.id]);
       await c.query('commit');
       r.json(eng.view(s, { id, ranked }));
     } catch (e) {
@@ -433,7 +459,7 @@ function createApp(cfg, pool) {
   app.post('/api/admin/action', w(async (q, r) => {
     if (!adminOK(q, r)) return; const b = q.body || {}; if (!okRef(b.ref)) return r.status(400).json({ error: 'bad' });
     await ready;
-    if (b.action === 'ban') { await pool.query('update players set banned=true where id in (select id from scores where ref=$1)', [b.ref]); await pool.query('delete from scores where ref=$1', [b.ref]); }
+    if (b.action === 'ban') { await pool.query('update players set banned=true,avatar=null where id in (select id from scores where ref=$1)', [b.ref]); await pool.query('delete from scores where ref=$1', [b.ref]); }
     else if (b.action === 'clear') { await pool.query('update scores set hidden=false where ref=$1', [b.ref]); await pool.query('delete from reports where target=$1', [b.ref]); }
     else return r.status(400).json({ error: 'bad' });
     log('log', 'admin action', { action: b.action, ref: b.ref }); bust(); r.json({ ok: 1 });

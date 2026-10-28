@@ -77,3 +77,12 @@ input[type=checkbox]{width:auto;min-height:0;accent-color:var(--primary);margin-
 label.chk{display:flex;align-items:center;font-weight:500;margin:10px 0}
 .tracks,.shelf{list-style:none;margin:8px 0;padding:0}.tracks li,.shelf li{margin:6px 0}.shelf .btn{margin-top:0;justify-content:flex-start;text-align:left}
 .tracks .rep{width:100%;text-align:left;min-height:44px}
+
+/* profile photo + top-20 board */
+.idrow{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.idname{flex:1 1 220px;min-width:0}.idpic{flex:0 1 200px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}.idpic .lbl{font-weight:600}
+.av{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border);background:#1b2536;flex:none}
+.av.ph{display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;color:var(--muted)}
+.picbtns{display:flex;gap:6px;flex-wrap:wrap}.btn.sm{padding:6px 10px;font-size:.85rem;min-height:0;margin:0}
+.lbname{display:flex;align-items:center;gap:10px}.lbname .av{width:40px;height:40px;font-size:1rem}.top3 td{font-weight:700}
+.camov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px}
+.cambox{background:var(--surface);border-radius:14px;padding:14px;max-width:420px;width:100%;text-align:center}.cambox video{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;transform:scaleX(-1);background:#000}

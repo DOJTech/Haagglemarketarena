@@ -1,5 +1,5 @@
 // Offline-friendly shell. Game data (/api) and private pages are never cached.
-const C='haggle-v7',A=['/','/styles.css','/scene.css','/scene.js','/i18n.js','/i18n-more.js','/musiclinks.js','/stations.js','/common.js','/music.js','/app.js','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
+const C='haggle-v8',A=['/','/styles.css','/scene.css','/scene.js','/i18n.js','/i18n-more.js','/musiclinks.js','/stations.js','/common.js','/music.js','/app.js','/manifest.webmanifest','/icon-192.png','/icon-512.png'];
 const SKIP=['/api','/healthz','/report.html','/owner.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all(A.map(u=>c.add(u).catch(()=>{})))));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
