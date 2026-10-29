@@ -83,3 +83,8 @@
 
 /* cards: the market shows through a little, text stays clear */
 .card{background:rgba(255,255,255,.86)}
+.mk-taxi .me,.mk-taxi .gd{display:none}
+.mk-me,.mk-gd{position:absolute;bottom:7%;opacity:0;z-index:5;font-size:1.7rem;filter:drop-shadow(0 4px 3px rgba(0,0,0,.5))}.mk-me{left:49%}.mk-gd{left:56%;font-size:1.3rem}
+.riding .mk-me{animation:meB 8s linear forwards}.riding .mk-gd{animation:gdB 8s linear forwards}
+@keyframes meB{0%,60%{opacity:0;transform:none}64%{opacity:1;transform:translateY(-6px)}70%,100%{opacity:1;transform:none}}
+@keyframes gdB{0%,66%{opacity:0;transform:translateY(-22px)}78%,100%{opacity:1;transform:none}}
