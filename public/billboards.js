@@ -25,4 +25,4 @@ M('Wuse Market','Abuja',['#1a2740','#7fd1ae'],['\uD83C\uDF7E','\uD83C\uDF4E','\u
 
 /* TAXI FARES: fare = base + perStop for every market you pass. To set an exact price for a trip to one market,
    add it to fares, for example  fares:{'Wuse Market':5000,'Kurmi Market':3500}  (amounts in naira). */
-window.TAXI={base:800,perStop:350,fares:{}};
+window.TAXI={base:350,perStop:0,open:6,fares:{'Balogun Market':350,'Computer Village':350,'Alaba International':350,'Mile 12 Market':350,'Oyingbo Market':350,'Onitsha Main Market':500,'Ariaria International':500,'Kurmi Market':500,'Dugbe Market':500,'Wuse Market':500}};
