@@ -300,8 +300,12 @@ $('#del').onclick=async()=>{
 // Language: remembered on this device. Every screen is redrawn in place.
 function renderAll(){applyStatic();if(window.MarketRedraw)MarketRedraw();$('#cur').value=CURR;render();renderLB();renderIns();renderHow();renderLive();if(window.Radio)Radio.draw()}
 $('#lang').onchange=e=>{setLang(e.target.value);renderAll()};
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e;$('#inst').hidden=false});
-$('#inst').onclick=async()=>{if(!installEv)return;installEv.prompt();try{await installEv.userChoice}catch(x){}installEv=null;$('#inst').hidden=true};
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+if(!standalone)$('#inst').hidden=false;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e});
+window.addEventListener('appinstalled',()=>{$('#inst').hidden=true});
+$('#inst').onclick=async()=>{if(installEv){installEv.prompt();try{await installEv.userChoice}catch(x){}installEv=null;return}
+ alert(G(/iphone|ipad|ipod/i.test(navigator.userAgent)?'Tap the Share button, then choose Add to Home Screen.':'Open your browser menu (the three dots), then tap Add to Home screen or Install app.'))};
 window.addEventListener('online',tick);window.addEventListener('offline',tick);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
 if(location.hash==='#owner'){$('#invb').hidden=false;const o=document.createElement('script');o.src='owner.js';document.head.appendChild(o)}
@@ -317,4 +321,4 @@ initLang();initCur();renderAll();tick();setInterval(()=>{if(!document.hidden)tic
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
 /* keep the newest chat line in view */
-new MutationObserver(()=>{document.querySelectorAll('.chat').forEach(c=>{c.scrollTop=c.scrollHeight});const l=document.querySelector('#stage .chat .cb:last-child');if(l)l.scrollIntoView({block:'nearest'})}).observe(document.body,{childList:true,subtree:true});
+const __mo=new MutationObserver(()=>{document.querySelectorAll('.chat').forEach(c=>{c.scrollTop=c.scrollHeight});const l=document.querySelector('#stage .chat .cb:last-child');if(l)l.scrollIntoView({block:'nearest'})});['#stage','#mkt'].forEach(q=>{const e=document.querySelector(q);if(e)__mo.observe(e,{childList:true,subtree:true})});
