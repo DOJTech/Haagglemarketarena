@@ -1,4 +1,4 @@
- # Netlify hosts the game pages. The game server and database live on Render.
+# Netlify hosts the game pages. The game server and database live on Render.
 # BEFORE YOU DEPLOY:
 #   1. Replace haggle-api below if your Render service has a different name.
 #   2. Replace PUT-YOUR-PROXY-SECRET-HERE with the same long random value you set as PROXY_SECRET on Render
@@ -8,10 +8,10 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://haagglemarketarena.onrender.com/api/:splat"
+  to = "https://haggle-api.onrender.com/api/:splat"
   status = 200
   force = true
-  headers = {X-Proxy-Key = "32973bde6c6f50cf44ac951d18835e12"}
+  headers = {X-Proxy-Key = "PUT-YOUR-PROXY-SECRET-HERE"}
 
 [[headers]]
   for = "/*"

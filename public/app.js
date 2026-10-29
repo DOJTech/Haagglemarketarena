@@ -58,6 +58,10 @@ const errBox=()=>msg?`<p class="err" role="alert">${TH('Error: {m}',{m:msg})}</p
 // Shopper lines. The server sends only a code; the wording (and the Naija flavour) lives here.
 const OPEN=['I will give you {n}.','How about {n}? Make we do am.','My budget is {n}, my friend.'];
 const HIGH=['Too high! My best is {n}.','Abeg, reduce small. My best is {n}.','Ah! You want to finish me? {n} is my best.'];
+let CHAT={k:'',l:[]};
+const cpush=(w,t)=>{const l=CHAT.l;if(!l.length||l[l.length-1].w!==w||l[l.length-1].t!==t)l.push({w,t})};
+function chatSync(c){const k=(S.day||0)+':'+(S.idx||0)+':'+c.name;if(CHAT.k!==k){CHAT={k,l:[]};cpush('m','Good day! What are you looking for?')}}
+const chatHtml=c=>`<div class="chat" role="log" aria-label="Conversation">${CHAT.l.map(x=>`<p class="cb ${x.w}"><b>${x.w==='m'?'You':esc(c.name)}</b>${esc(x.t)}</p>`).join('')}</div>`;
 const said=c=>{const L=c.said==='high'?HIGH:OPEN;return T(L[(c.name.length+(S.idx||0)+c.pat)%L.length],{n:N(c.offer)})};
 
 /* ---------- profile photo: take one with the camera, or pick one from the phone or computer ---------- */
@@ -115,7 +119,7 @@ function setupHtml(){
  return `<section class="card" aria-labelledby="sh">
 <h2 id="sh" data-focus tabindex="-1">${T('Set up your stall')}</h2>
 ${PROF&&PROF.streak?`<p class="win">${T('{n}-day streak. Play today to keep it.',{n:PROF.streak})}</p>`:''}
-<p>${TH('Your <b>simulated</b> starting balance is <b>{n}</b>. It is pretend money that exists only in this game.',{n:N(20000)})}</p>
+<p>${TH('Your <b>simulated</b> starting balance is <b>{n}</b>. It is pretend money that exists only in this game.',{n:N(30000)})}</p>
 <p class="warnbox">${T('Your display name, country and score appear on the public leaderboard. Do not use your real name, phone number or any personal details.')}</p>
 <div class="idrow"><div class="idname"><label for="nm">${T('Display name (3 to 20 characters)')}</label>
 <input id="nm" type="text" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" value="${esc(nm)}" aria-describedby="nmh"></div>
@@ -153,7 +157,7 @@ ${m}<button class="btn" id="open" type="button">${T('Open the stall for the day'
   if(counter==null||counter<lo)counter=Math.min(Math.max(ref,lo),hi);
   const accLoss=c.offer<unit&&confirmLoss==='acc',ctrLoss=counter<unit&&confirmLoss==='ctr';
   return `<div class="card"><div class="who"><span class="face" aria-hidden="true">${esc(c.face)}</span><div><h2 data-focus tabindex="-1">${TH('{name} wants {item}',{name:c.name,item:pname(c.p)})}</h2><p class="hint">${T('Customer {i} of {n}. Patience: {p} of 3 left',{i:S.idx,n:PER,p:c.pat})}</p></div></div>
-<p class="said">\u201c${esc(said(c))}\u201d</p>
+${(chatSync(c),cpush('s',said(c)),chatHtml(c))}
 <p class="hint">${T('Your cost for this item: about {n}. Selling below cost loses money.',{n:N(unit)})}</p>
 <button class="btn" id="acc" type="button">${accLoss?T('Confirm: sell at a loss of {n}',{n:N(unit-c.offer)}):T('Accept {n}',{n:N(c.offer)})}</button>
 <label for="rg">${T('Your counter-offer:')} <b id="cv">${N(counter)}</b></label>
@@ -165,9 +169,9 @@ ${m}<button class="btn" id="open" type="button">${T('Open the stall for the day'
 <li>${TH('<b>Let them go:</b> no sale and no cost, but the shopper leaves unhappy.')}</li></ul></div>`;
  }
  if(S.phase==='result'){
-  const r=S.res,c=S.cur;
-  return r.ok?`<div class="card" role="status"><h2 data-focus tabindex="-1">${r.gain>=0?T('\u2713 Sold for {n}',{n:N(r.price)}):T('Sold at a loss for {n}',{n:N(r.price)})}</h2><p>${T(r.gain>=0?'Profit on this unit: {g}. Customer satisfaction: {s} out of 100.':'Loss on this unit: {g}. Customer satisfaction: {s} out of 100.',{g:N(Math.abs(r.gain)),s:r.sat})}</p><p>${r.left<=100?T('Near-perfect price: they could barely have paid more.'):TH('{name} would have paid up to {max}, so you left {left} on the table.',{name:c.name,max:N(r.price+r.left),left:N(r.left)})}</p>${m}<button class="btn" id="nx" type="button">${T('Next customer')}</button></div>`
-  :`<div class="card" role="status"><h2 data-focus tabindex="-1">${T('\u2717 No sale: they walked away')}</h2><p>${TH('{name} would have paid up to {max}. Customer satisfaction for this shopper: 20 out of 100.',{name:c.name,max:N(r.max)})}</p>${m}<button class="btn" id="nx" type="button">${T('Next customer')}</button></div>`;
+  const r=S.res,c=S.cur;chatSync(c);cpush('s',r.ok?'Pleasure doing business with you!':'Too expensive for me. I will look elsewhere.');
+  return r.ok?`<div class="card" role="status"><h2 class="okh" data-focus tabindex="-1">${r.gain>=0?T('\u2713 Sold for {n}',{n:N(r.price)}):T('Sold at a loss for {n}',{n:N(r.price)})}</h2><p>${T(r.gain>=0?'Profit on this unit: {g}. Customer satisfaction: {s} out of 100.':'Loss on this unit: {g}. Customer satisfaction: {s} out of 100.',{g:N(Math.abs(r.gain)),s:r.sat})}</p><p>${r.left<=100?T('Near-perfect price: they could barely have paid more.'):TH('{name} would have paid up to {max}, so you left {left} on the table.',{name:c.name,max:N(r.price+r.left),left:N(r.left)})}</p>${chatHtml(c)}${m}<button class="btn" id="nx" type="button">${T('Next customer')}</button></div>`
+  :`<div class="card" role="status"><h2 class="badh" data-focus tabindex="-1">${T('\u2717 No sale: they walked away')}</h2><p>${TH('{name} would have paid up to {max}. Customer satisfaction for this shopper: 20 out of 100.',{name:c.name,max:N(r.max)})}</p>${chatHtml(c)}${m}<button class="btn" id="nx" type="button">${T('Next customer')}</button></div>`;
  }
  if(S.phase==='dayend'){
   const d=S.dayLog[S.dayLog.length-1];
@@ -180,7 +184,7 @@ ${S.spoiled?`<p class="lose">${T('Spoilage: {q} fresh items spoiled overnight an
  const weak=parts.slice().sort((x,y)=>b.parts[x[0]]/x[2]-b.parts[y[0]]/y[2])[0];
  const TIPS={profit:'Profit was your weakest part. Look for sales closer to each shopper\'s limit, and avoid selling below cost.',margin:'Margin was your weakest part. Try countering above the first offer instead of accepting it.',satisfaction:'Customer satisfaction was your weakest part. Very high counters make shoppers walk away; fair prices keep them happy.',inventory:'Stock management was your weakest part. Fresh goods spoil overnight, and leftover stock on the last day loses value.',consistency:'Consistency was your weakest part. Aim for a profitable day, every day.'};
  return `<div class="card"><h2 data-focus tabindex="-1">${T('Campaign complete')}</h2><p class="big">${S.score} <span class="hint">${T('out of 1000 points')}</span></p>
-<p>${TH('Result after valuing leftover stock at {l}: <b>{r}</b> (starting from a simulated {s}).',{l:N(S.liq),r:signed(S.result),s:N(20000)})}</p>
+<p>${TH('Result after valuing leftover stock at {l}: <b>{r}</b> (starting from a simulated {s}).',{l:N(S.liq),r:signed(S.result),s:N(30000)})}</p>
 <div class="tw"><table><caption class="sr-only">${T('Score breakdown')}</caption><tr><th>${T('Part')}</th><th>${T('Points')}</th><th>${T('Out of')}</th></tr>${parts.map(x=>`<tr><td>${esc(x[1])}</td><td>${b.parts[x[0]]}</td><td>${x[2]}</td></tr>`).join('')}</table></div>
 <p>${TH('<b>Next time:</b> {t}',{t:T(TIPS[weak[0]])})}</p>
 <p class="hint">${S.ranked?T("Counted on today's leaderboard."):esc(T(S.note||'Practice run, not ranked.'))} ${T('Scores are calculated by the server.')}</p>${m}
@@ -189,12 +193,11 @@ ${S.spoiled?`<p class="lose">${T('Spoilage: {q} fresh items spoiled overnight an
 const HL={buy:h=>T('Bought {q} {p} for {amt}',{q:h.q,p:pname(h.p),amt:N(h.amt)}),return:h=>T('Took back {q} {p} ({amt} returned)',{q:h.q,p:pname(h.p),amt:N(h.amt)}),sale:h=>T('Sold 1 {p} for {amt} (cost {c})',{p:pname(h.p),amt:N(h.amt),c:N(h.cogs)}),walk:h=>T('No sale: a {p} shopper walked away',{p:pname(h.p)}),nostock:h=>T('No sale: out of {p}',{p:pname(h.p)}),spoil:h=>T('{q} {p} spoiled overnight ({amt} written off)',{q:h.q,p:pname(h.p),amt:N(h.amt)})};
 function renderDash(){
  const d=$('#dash');if(!S){d.hidden=true;return}
- const f=S.fin,done=S.phase==='final'?DAYS:(S.phase==='dayend'?S.day:S.day-1),hist=S.hist.slice(-12).reverse();
+ const f=S.fin,done=S.phase==='final'?DAYS:(S.phase==='dayend'?S.day:S.day-1);
  d.hidden=false;
  d.innerHTML=`<div class="card"><h3>${T('Your business')}</h3><p class="hint">${T('Campaign: {d} of {n} days complete',{d:done,n:DAYS})}</p><p class="hint"><span aria-hidden="true">${(WXI[S.wx.k]||WXI.sun).e}</span> ${esc(T((WXI[S.wx.k]||WXI.sun).n))}</p><progress max="${DAYS}" value="${done}" aria-label="${esc(T('Campaign progress'))}">${done} / ${DAYS}</progress>
-<dl class="metrics">${stat(T('Starting balance (simulated)'),N(f.start))}${stat(T('Cash'),N(f.cash))}${stat(T('Revenue'),N(f.rev))}${stat(T('Cost of goods sold'),N(f.cogs))}${stat(T('Gross profit'),signed(f.gross))}${stat(T('Gross margin'),f.margin===null?T('n/a (no sales yet)'):f.margin+'%')}${stat(T('Units purchased'),f.unitsBought)}${stat(T('Units sold'),f.unitsSold)}${stat(T('Stock on hand'),T('{u} units ({c} at cost)',{u:f.invUnits,c:N(f.invCost)}))}${stat(T('Spoilage written off'),N(f.writeOff))}${stat(T('Transactions'),f.tx)}${stat(T('Customer satisfaction'),f.satisfaction===null?T('n/a yet'):T('{s} out of 100',{s:f.satisfaction}))}</dl>
-<p class="hint">${T('Gross profit is revenue minus the cost of the goods you sold. Rent and wages are not modelled.')}</p><p class="hint">\u2713 ${T('Saved automatically after every move.')}</p></div>
-<div class="card"><h3>${T('Transaction history')}</h3>${hist.length?`<ul class="hist">${hist.map(h=>`<li>${esc(T('Day {d}: {l}',{d:h.d,l:HL[h.k]?HL[h.k](h):h.k}))}</li>`).join('')}</ul>`:`<p class="hint">${T('No transactions yet.')}</p>`}</div>`;
+
+<p class="hint">${T('Gross profit is revenue minus the cost of the goods you sold. Rent and wages are not modelled.')}</p><p class="hint">\u2713 ${T('Saved automatically after every move.')}</p></div>`;
 }
 function render(){
  sp.n=S&&S.sponsor?S.sponsor.product:'Golden Crate noodles';sp.tag=S&&S.sponsor?T('Sponsored by {b}',{b:S.sponsor.brand}):T('sample sponsor');
@@ -217,9 +220,9 @@ function wire(){
  ['pcam','pfile'].forEach(id=>{const f=$('#'+id);if(f)f.onchange=()=>{pickFile(f.files&&f.files[0]);f.value=''}});
  const nmi=$('#nm');if(nmi)nmi.oninput=()=>{draft=nmi.value;const pv=$('#pv');if(pv&&pv.classList.contains('ph'))pv.innerHTML=initial(nmi.value)};on('prac',()=>start(false));on('again',()=>start(false));
  document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>act('buy',{pid:b.dataset.b,dir:+b.dataset.d}));
- on('open',()=>act('open'));on('nx',()=>act('next'));on('nd',()=>act('nextday'));on('lg',()=>act('leave'));
- on('acc',()=>{const c=S.cur;if(c.offer<S.basis[c.p]&&confirmLoss!=='acc'){confirmLoss='acc';render();return}act('accept')});
- on('ctr',()=>{const c=S.cur;if(counter<S.basis[c.p]&&confirmLoss!=='ctr'){confirmLoss='ctr';render();return}act('counter',{price:counter})});
+ on('open',()=>act('open'));on('nx',()=>act('next'));on('nd',()=>act('nextday'));on('lg',()=>{cpush('m','No problem. Maybe next time.');act('leave')});
+ on('acc',()=>{const c=S.cur;if(c.offer<S.basis[c.p]&&confirmLoss!=='acc'){confirmLoss='acc';render();return}cpush('m','Deal! '+N(c.offer)+' it is.');act('accept')});
+ on('ctr',()=>{const c=S.cur;if(counter<S.basis[c.p]&&confirmLoss!=='ctr'){confirmLoss='ctr';render();return}cpush('m','How about '+N(counter)+'?');act('counter',{price:counter})});
  const rg=$('#rg');if(rg)rg.oninput=()=>{counter=+rg.value;confirmLoss=false;$('#cv').textContent=N(counter);$('#ctr').textContent=T('Counter at {n}',{n:N(counter)})};
  on('sh',async()=>{
   const t=T('I scored {s} out of 1000 in Haggle Market Arena. Can you beat me?',{s:S.score}),b=$('#sh');
