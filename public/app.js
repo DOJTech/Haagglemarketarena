@@ -1,4 +1,4 @@
-const DAYS=14,PER=5,RENT=200,TIP=100;
+const DAYS=14,PER=8,RENT=200,TIP=100;
 let S=null,LB=[],busy=false,msg='',counter=null,PROF=null,lbRange='today',lbCountry='',setup=false,confirmLoss=false,INS=null,RULES=null,draft=null,draftCc=null,lastKey='',LIVE=null,liveErr='',installEv=null;
 const sp=P.find(x=>x.sp);
 const signed=n=>(n<0?'\u2212':'')+N(Math.abs(n));
