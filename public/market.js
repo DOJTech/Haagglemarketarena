@@ -13,7 +13,7 @@ function scene(m){
  h+='</div><div class="mk-road"><span class="mk-car c1">\uD83D\uDE95</span><span class="mk-car c2">\uD83D\uDE8C</span><span class="mk-car c3">\uD83D\uDE95</span></div><div class="mk-walk">';
  for(i=0;i<6;i++)h+='<span style="--d:'+(14+i*3)+'s;--dl:-'+(i*2.7)+'s;--t:'+(i%2?'0':'1')+'" class="'+(i%2?'rev':'')+'">'+PPL[(i+cur)%8]+'</span>';
  return h+'</div><div class="mk-talk"><span class="mk-s">\uD83E\uDDD5\uD83C\uDFFE</span><span class="mk-b">\uD83E\uDDD1\uD83C\uDFFF</span><p class="mk-bub bl" aria-hidden="true"></p><p class="mk-bub br" aria-hidden="true"></p></div>'}
-host.innerHTML='<div class="mk-head"><h3></h3><span class="hint"></span></div><div class="mk-view"><div id="mks"></div><div class="mk-taxi" aria-hidden="true"><i class="tx">\uD83D\uDE95</i><i class="me">\uD83E\uDDD1\uD83C\uDFFF</i><i class="gd">\uD83D\uDCE6\uD83D\uDCE6\uD83D\uDCE6</i></div></div><div class="mk-ctl"><label class="sr-only" for="mksel">'+G('Choose a market')+'</label><select id="mksel"></select><button class="btn" id="mkgo" type="button">\uD83D\uDE95</button></div><div class="chat mk-chat" role="log" aria-label="Taxi conversation" hidden></div><div class="mk-pay" hidden><input id="mkoff" type="number" inputmode="numeric" min="1" step="10"><button class="btn alt" id="mkoffer" type="button"></button><button class="btn" id="mkpay" type="button"></button><button class="btn alt" id="mkno" type="button">Not now</button></div><p class="hint mk-note">'+G('Your goods ride with you. Every market has its own billboards and crowd.')+'</p>';
+host.innerHTML='<div class="mk-head"><h3></h3><span class="hint"></span></div><div class="mk-view"><div id="mks"></div><div class="mk-taxi" aria-hidden="true"><i class="tx">\uD83D\uDE95</i></div><div class="mk-me" aria-hidden="true">\uD83E\uDDD1\uD83C\uDFFF</div><div class="mk-gd" aria-hidden="true">\uD83D\uDCE6\uD83D\uDCE6\uD83D\uDCE6</div></div><div class="mk-ctl"><label class="sr-only" for="mksel">'+G('Choose a market')+'</label><select id="mksel"></select><button class="btn" id="mkgo" type="button">\uD83D\uDE95</button></div><div class="chat mk-chat" role="log" aria-label="Taxi conversation" hidden></div><div class="mk-pay" hidden><input id="mkoff" type="number" inputmode="numeric" min="1" step="10"><button class="btn alt" id="mkoffer" type="button"></button><button class="btn" id="mkpay" type="button"></button><button class="btn alt" id="mkno" type="button">Not now</button></div><p class="hint mk-note">'+G('Your goods ride with you. Every market has its own billboards and crowd.')+'</p>';
 var sel=host.querySelector('#mksel'),go=host.querySelector('#mkgo'),view=host.querySelector('.mk-view'),mks=host.querySelector('#mks'),tk=0,timer;
 sel.innerHTML=B.map(function(m,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(m.name)+'</option>'}).join('');
 function say(){var m=B[cur],t=TALK[tk++%TALK.length],p=800+((tk*370)%1400),bl=mks.querySelector('.bl'),br=mks.querySelector('.br');if(!bl)return;
@@ -26,13 +26,16 @@ function show(i){cur=i;var m=B[i];try{put('haggle.mkt',String(i))}catch(e){}
 var chat=host.querySelector('.mk-chat'),payBox=host.querySelector('.mk-pay'),pay=host.querySelector('#mkpay'),no=host.querySelector('#mkno');
 function cb(w,t){chat.insertAdjacentHTML('beforeend','<p class="cb '+w+'"><b>'+(w==='m'?G('You'):'\uD83D\uDE95 '+G('Driver'))+'</b>'+esc(t)+'</p>');chat.scrollTop=chat.scrollHeight}
 function free(){riding=false;go.disabled=sel.disabled=false}
+function ensure(){var a=host.querySelector('#mkoff'),b=host.querySelector('#mkoffer');
+ if(!a){a=document.createElement('input');a.id='mkoff';a.type='number';a.inputMode='numeric';a.min=1;a.step=10;payBox.insertBefore(a,payBox.firstChild)}
+ if(!b){b=document.createElement('button');b.id='mkoffer';b.type='button';b.className='btn alt';a.after(b)}return[a,b]}
 function ride(i){if(riding||i===cur){sel.value=cur;return}riding=true;go.disabled=sel.disabled=true;
  var name=B[i].name,TX=window.TAXI||{},floor=(TX.fares&&TX.fares[name]!=null)?+TX.fares[name]:(TX.base||800)+(TX.perStop||350)*Math.abs(i-cur),
-  ask=Math.max(floor,Math.round(floor*(TX.open||4)/50)*50),rounds=0,strikes=0,sr=document.getElementById('sr'),inp=host.querySelector('#mkoff'),offer=host.querySelector('#mkoffer'),
+  ask=Math.max(floor,Math.round(floor*(TX.open||4)/50)*50),rounds=0,strikes=0,sr=document.getElementById('sr'),inp=ensure()[0],offer=ensure()[1],
   money=function(n){return '\u20A6'+n.toLocaleString()};
  chat.hidden=false;chat.innerHTML='';cb('d',G('Good day, oga! Where are we going?'));
  setTimeout(function(){cb('m',G('Please take me and my goods to {m}.',{m:name}))},700);
- setTimeout(function(){cb('d',G('For {m} the fare is {f}. Make your offer or pay.',{m:name,f:money(ask)}));label();inp.value='';inp.placeholder=G('Your offer');offer.textContent=G('Offer');no.textContent=G('Not now');payBox.hidden=false},1500);
+ setTimeout(function(){cb('d',G('For {m} the fare is {f}. Make your offer or pay.',{m:name,f:money(ask)}));label();inp.value='';inp.placeholder=G('Your offer');offer.textContent=G('My offer');no.textContent=G('Not now');payBox.hidden=false},1500);
  function label(){pay.textContent=G('Pay {f} fare',{f:money(ask)})}
  function stop(){payBox.hidden=true;sel.value=cur;free()}
  no.onclick=function(){cb('m',G('Not now, thank you.'));cb('d',G('Okay, I will be around.'));stop()};
@@ -42,6 +45,7 @@ function ride(i){if(riding||i===cur){sel.value=cur;return}riding=true;go.disable
   rounds++;if(rounds>=2&&o<=Math.ceil(floor*1.1)){go2(o);return}
   if(rounds>=5){cb('d',G('That is my last price: {f}.',{f:money(ask)}));return}
   ask=Math.max(o+10,Math.min(ask-10,Math.round((ask+o)/20)*10));cb('d',G('Okay, I can do {f}.',{f:money(ask)}));label();inp.value=''};
+ inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();offer.click()}};
  pay.onclick=function(){go2(ask)};
  function go2(price){var f=money(price);payBox.hidden=true;cb('d',G('Deal! {p} it is.',{p:f}));cb('m',G('Here is {f}.',{f:f}));cb('d',G('Payment received. Thank you! Hold tight, we dey go!'));
   var arrive=function(){cb('d',G('We don reach {m}. Let me help you unload your goods.',{m:name}));cb('m',G('Thank you! Goods are down.'));chat.insertAdjacentHTML('beforeend','<p class="rcpt">\u2713 '+G('Paid {f}',{f:f})+' \u00B7 TX'+(Date.now()%100000)+'</p>');chat.scrollTop=chat.scrollHeight;if(sr)sr.textContent=G('Arrived at {m}. Fare paid {f}',{m:name,f:f});free()};
