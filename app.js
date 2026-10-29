@@ -20,6 +20,7 @@ alter table scores add column if not exists ref text;
 alter table scores add column if not exists hidden boolean default false;
 alter table players add column if not exists country text;
 alter table players add column if not exists avatar text;
+create table if not exists i18n_cache(lang text not null,k text not null,v text not null,primary key(lang,k));
 alter table scores add column if not exists country text;
 create table if not exists reports(day date,reporter text,target text,created timestamptz default now(),primary key(day,reporter,target));
 alter table reports add column if not exists ip text;
@@ -95,7 +96,8 @@ function createApp(cfg, pool) {
   });
   // 3. Only your own website may POST.
   app.use('/api', (q, r, n) => (q.method === 'POST' && cfg.origins.length && !cfg.origins.includes(q.get('origin') || '') ? r.status(403).json({ error: 'origin' }) : n()));
-  app.use('/api/me/photo', express.json({ limit: '40kb' }));   // a small square photo, re-encoded by the browser
+  app.use('/api/me/photo', express.json({ limit: '40kb' }));
+  app.use('/api/translate', express.json({ limit: '24kb' }));   // a small square photo, re-encoded by the browser
   app.use('/api', express.json({ limit: '4kb' }));
   const dev = (id, bucket, max) => devLim.hit(bucket + id, max);
   const tooMany = (r) => r.set('Retry-After', '30').status(429).json({ error: 'slow down' });
@@ -213,6 +215,30 @@ function createApp(cfg, pool) {
     await ready;
     await pool.query('insert into players(id,avatar) values($1,$2) on conflict(id) do update set avatar=$2,last_seen=now()', [b.id, b.photo || null]);
     bust(); r.json({ ok: 1 });
+  }));
+
+  // Automatic translation for any language: translated once by Claude, then kept in the database for everyone.
+  const tagsOf = (x) => (x.match(/<\/?b>/g) || []).join(''), phOf = (x) => (x.match(/\{\w+\}/g) || []).sort().join();
+  const cleanTr = (en, tr) => typeof tr === 'string' && tr.length > 0 && tr.length < 700 && tagsOf(en) === tagsOf(tr) && phOf(en) === phOf(tr) && !/[<>]/.test(tr.replace(/<\/?b>/g, ''));
+  app.post('/api/translate', w(async (q, r) => {
+    const b = q.body || {}, lang = String(b.lang || '');
+    if (!okId(b.id) || !/^[a-z]{2,3}$/.test(lang) || !Array.isArray(b.keys) || b.keys.length > 40) return r.status(400).json({ error: 'bad' });
+    const keys = [...new Set(b.keys.filter((k) => typeof k === 'string' && k.length > 0 && k.length < 400))];
+    if (!keys.length) return r.json({ t: {} });
+    if (dev(b.id, 'tr', 30)) return tooMany(r);
+    await ready;
+    const have = await pool.query('select k,v from i18n_cache where lang=$1 and k=any($2)', [lang, keys]), out = {};
+    have.rows.forEach((x) => { out[x.k] = x.v; });
+    const todo = keys.filter((k) => !(k in out)), name = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang);
+    if (todo.length && process.env.ANTHROPIC_API_KEY && name && name !== lang) {
+      try {
+        const ai = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: process.env.TRANSLATE_MODEL || 'claude-haiku-5-5', max_tokens: 6000, messages: [{ role: 'user', content: 'Translate these short UI strings of a Nigerian market game from English into ' + name + '. Keep {placeholders}, numbers, the naira sign and emoji exactly as they are, and keep <b></b> tags. Reply with ONLY a JSON array of the translations, same order, same length.\n' + JSON.stringify(todo) }] }), signal: AbortSignal.timeout(45000) });
+        const j = await ai.json(), txt = (j.content && j.content[0] && j.content[0].text) || '', arr = JSON.parse(txt.slice(txt.indexOf('['), txt.lastIndexOf(']') + 1));
+        for (let i = 0; i < todo.length; i++) if (cleanTr(todo[i], arr[i])) { out[todo[i]] = arr[i]; await pool.query('insert into i18n_cache(lang,k,v) values($1,$2,$3) on conflict do nothing', [lang, todo[i], arr[i]]); }
+      } catch (e) { /* no translation this time: the game keeps showing English for those lines */ }
+    }
+    r.json({ t: out });
   }));
 
   app.post('/api/run/start', w(async (q, r) => {

@@ -83,8 +83,8 @@ test('score: doing nothing earns 0, every score is a whole number 0..1000, parts
   }
   assert.equal(SCORE.PROFIT_MAX + SCORE.MARGIN_MAX + SCORE.SAT_MAX + SCORE.INV_MAX + SCORE.CONS_MAX, SCORE.TOTAL_MAX);
 });
-test('campaign is a fixed seven-day sequence shown by rules()', () => {
-  const R = rules(); assert.equal(R.campaign.length, 7); assert.ok(R.campaign.every((c) => c.t && c.d && c.obj));
+test('campaign is a fixed 14-day sequence shown by rules()', () => {
+  const R = rules(); assert.equal(R.campaign.length, 14); assert.ok(R.campaign.every((c) => c.t && c.d && c.obj));
   const w = eng.build(true, '2026-10-23', 'x', 1); assert.deepEqual(w.map((d) => d.ev.t), R.campaign.map((c) => c.t));
 });
 test('sponsor price test changes only the sponsored cost, and never in ranked runs', () => {
