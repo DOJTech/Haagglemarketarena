@@ -8,10 +8,10 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "https://haggle-api.onrender.com/api/:splat"
+  to = "https://haagglemarketarena.onrender.com/api/:splat"
   status = 200
   force = true
-  headers = {X-Proxy-Key = "PUT-YOUR-PROXY-SECRET-HERE"}
+  headers = {X-Proxy-Key = "049fda2045d78ee25c50ba7eef9a517d"}
 
 [[headers]]
   for = "/*"
