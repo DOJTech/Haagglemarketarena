@@ -10,7 +10,7 @@ UMB=A('SunShield','Umbrellas and caps','\u2602\uFE0F','#E4572E'),FAN=A('KoolBree
 SPICE=A('Mama Spice','Pepper and seasoning','\uD83C\uDF36\uFE0F','#B71C1C'),LAMP=A('Lumo','Solar lamps','\uD83D\uDCA1','#F9A825');
 function M(name,city,sky,goods,b1,b2){return{name:name,city:city,sky:sky,goods:goods,boards:[b1,b2]}}
 window.BILLBOARDS=[
-M('Balogun Market','Lagos Island',['#1b2a52','#f4a259'],['\uD83D\uDC57','\uD83D\uDC54','\uD83E\uDDE3','\uD83D\uDC5C'],SHOE,A('Pepsi','Cold soft drinks','\uD83E\uDD64','#0B4EA2')),
+M('Balogun Market','Lagos Island',['#1b2a52','#f4a259'],['\uD83D\uDC57','\uD83D\uDC54','\uD83E\uDDE3','\uD83D\uDC5C'],SHOE,A('Free ADVERT','Cold drinks','\uD83E\uDD64','#E4572E')),
 M('Computer Village','Ikeja, Lagos',['#14233f','#6aa7ff'],['\uD83D\uDCF1','\uD83D\uDD0C','\uD83C\uDFA7','\uD83D\uDCBB'],PHONE,LAMP),
 M('Alaba International','Ojo, Lagos',['#2a1f4d','#ff8a65'],['\uD83D\uDCFA','\uD83D\uDD0A','\uD83D\uDCA1','\uD83D\uDD0C'],FAN,OPEN()),
 M('Mile 12 Market','Lagos',['#16352c','#ffd166'],['\uD83C\uDF45','\uD83C\uDF36\uFE0F','\uD83E\uDDC5','\uD83E\uDD6C'],TOM,A('Free ADVERT','SIM cards','\uD83D\uDCF6','#00897B')),
