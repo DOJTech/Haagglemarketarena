@@ -1,0 +1,15 @@
+/* Your shop: live street scene with the goods you actually hold */
+.shop{padding:12px}.shop h3{margin:0 0 6px}.shop svg{display:block;width:100%;height:auto;border-radius:14px;background:#7ec8ff}
+.shop .v{animation:shopR 18s linear infinite}.shop .v.l{animation-name:shopL}.shop .bob{animation:shopB .5s ease-in-out infinite alternate}
+.shop .pw{animation:shopW 26s linear infinite}.shop .pw.l{animation-name:shopWL}.shop .rain line{stroke:#cfe6ff;stroke-width:1;animation:shopRain .55s linear infinite}
+.shop .wave{transform-box:fill-box;transform-origin:left bottom;animation:shopWave 1.2s ease-in-out infinite alternate}
+.shop .legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin:8px 2px 0;font-weight:700}
+.buying #shop{display:none}
+@keyframes shopR{from{transform:translateX(-120px)}to{transform:translateX(400px)}}
+@keyframes shopL{from{transform:translateX(400px)}to{transform:translateX(-120px)}}
+@keyframes shopW{from{transform:translateX(-30px)}to{transform:translateX(390px)}}
+@keyframes shopWL{from{transform:translateX(390px)}to{transform:translateX(-30px)}}
+@keyframes shopB{from{transform:translateY(0)}to{transform:translateY(-1.6px)}}
+@keyframes shopRain{from{transform:translateY(-12px)}to{transform:translateY(14px)}}
+@keyframes shopWave{from{transform:rotate(-12deg)}to{transform:rotate(14deg)}}
+@media(prefers-reduced-motion:reduce){.shop .v,.shop .pw,.shop .bob,.shop .wave,.shop .rain line{animation:none}}
