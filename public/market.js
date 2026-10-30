@@ -47,7 +47,7 @@ function ride(i){if(riding||i===cur){sel.value=cur;return}riding=true;go.disable
   ask=Math.max(o+10,Math.min(ask-10,Math.round((ask+o)/20)*10));cb('d',G('Okay, I can do {f}.',{f:money(ask)}));label();inp.value=''};
  inp.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();offer.click()}};
  pay.onclick=function(){go2(ask)};
- function go2(price){var f=money(price);payBox.hidden=true;cb('d',G('Deal! {p} it is.',{p:f}));cb('m',G('Here is {f}.',{f:f}));cb('d',G('Payment received. Thank you! Hold tight, we dey go!'));
+ function go2(price){var f=money(price);payBox.hidden=true;cb('d',G('Deal! {p} it is.',{p:f}));if(window.HaggleCharge)HaggleCharge(price);cb('m',G('Here is {f}.',{f:f}));cb('d',G('Payment received. Thank you! Hold tight, we dey go!'));
   var arrive=function(){cb('d',G('We don reach {m}. Let me help you unload your goods.',{m:name}));cb('m',G('Thank you! Goods are down.'));chat.insertAdjacentHTML('beforeend','<p class="rcpt">\u2713 '+G('Paid {f}',{f:f})+' \u00B7 TX'+(Date.now()%100000)+'</p>');chat.scrollTop=chat.scrollHeight;if(sr)sr.textContent=G('Arrived at {m}. Fare paid {f}',{m:name,f:f});free()};
   if(reduce){show(i);arrive();return}
   view.classList.add('riding');
