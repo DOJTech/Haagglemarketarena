@@ -193,10 +193,10 @@ ${S.spoiled?`<p class="lose">${T('Spoilage: {q} fresh items spoiled overnight an
 const HL={buy:h=>T('Bought {q} {p} for {amt}',{q:h.q,p:pname(h.p),amt:N(h.amt)}),return:h=>T('Took back {q} {p} ({amt} returned)',{q:h.q,p:pname(h.p),amt:N(h.amt)}),sale:h=>T('Sold 1 {p} for {amt} (cost {c})',{p:pname(h.p),amt:N(h.amt),c:N(h.cogs)}),walk:h=>T('No sale: a {p} shopper walked away',{p:pname(h.p)}),nostock:h=>T('No sale: out of {p}',{p:pname(h.p)}),spoil:h=>T('{q} {p} spoiled overnight ({amt} written off)',{q:h.q,p:pname(h.p),amt:N(h.amt)})};
 let CP={id:'',v:null,d:0};
 function renderDash(){
- const d=$('#dash'),cb=$('#cash');if(!S){d.hidden=true;cb.hidden=true;$('#play').classList.remove('buying');return}
+ const d=$('#dash'),cb=$('#cash');if(!S){d.hidden=true;cb.hidden=true;$('#play').classList.remove('buying');if(window.ShopDraw)ShopDraw(null);return}
  const f=S.fin,done=S.phase==='final'?DAYS:(S.phase==='dayend'?S.day:S.day-1);
  d.hidden=false;
- $('#play').classList.toggle('buying',S.phase==='stock');
+ $('#play').classList.toggle('buying',S.phase==='stock');if(window.ShopDraw)ShopDraw(S);
  const cv=Math.round(S.fin.cash);if(CP.id!==S.runId)CP={id:S.runId,v:cv,d:0};else if(cv!==CP.v){CP.d=cv-CP.v;CP.v=cv}
  cb.hidden=false;cb.innerHTML=`<span>${G('Cash')}</span><b>${N(cv)}</b>${CP.d?`<em class="${CP.d>0?'up':'dn'}">${CP.d>0?'\u25B2 +':'\u25BC \u2212'}${N(Math.abs(CP.d))}</em>`:`<em>${G('Start {p}',{p:N(S.fin.start)})}</em>`}`;
  d.innerHTML=`<div class="card"><h3>${T('Your business')}</h3><p class="hint">${T('Campaign: {d} of {n} days complete',{d:done,n:DAYS})}</p><p class="hint"><span aria-hidden="true">${(WXI[S.wx.k]||WXI.sun).e}</span> ${esc(T((WXI[S.wx.k]||WXI.sun).n))}</p><progress max="${DAYS}" value="${done}" aria-label="${esc(T('Campaign progress'))}">${done} / ${DAYS}</progress>
