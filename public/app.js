@@ -101,7 +101,7 @@ async function openCamera(){
  const close=()=>{st.getTracks().forEach(t=>t.stop());o.remove()};
  o.querySelector('#cx').onclick=close;
  o.querySelector('#snap').onclick=()=>{if(v.videoWidth){const u=squareJpeg(v,v.videoWidth,v.videoHeight);close();savePhoto(u)}};
- o.querySelector('#snap').focus();
+ o.querySelector('#snap').focus({preventScroll:true});
 }
 function langBar(){return ''}
 function landing(){return `<section class="card hero" aria-labelledby="h1">
@@ -212,7 +212,7 @@ function render(){
  $('#stage').innerHTML=S?stage():(setup?setupHtml():landing());
  renderDash();wire();
  let el=null;if(key===lastKey&&sel)el=$('#stage '+sel);
- if(el&&!el.disabled)el.focus();else if(key!==lastKey){const h=$('#stage [data-focus]');if(h&&lastKey)h.focus()}
+ if(el&&!el.disabled)el.focus({preventScroll:true});else if(key!==lastKey){const h=$('#stage [data-focus]');if(h&&lastKey)h.focus({preventScroll:true})}
  lastKey=key;
 }
 function wire(){
@@ -322,3 +322,4 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch
 
 /* keep the newest chat line in view */
 const __mo=new MutationObserver(()=>{document.querySelectorAll('.chat').forEach(c=>{c.scrollTop=c.scrollHeight});const l=document.querySelector('#stage .chat .cb:last-child');if(l)l.scrollIntoView({block:'nearest'})});['#stage','#mkt'].forEach(q=>{const e=document.querySelector(q);if(e)__mo.observe(e,{childList:true,subtree:true})});
+window.HaggleCharge=async amt=>{if(!S||S.phase==='final')return;try{S=await api('run/act',{id:DEV,runId:S.runId,type:'fare',amount:amt});render()}catch(e){}};
